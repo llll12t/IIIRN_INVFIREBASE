@@ -147,7 +147,7 @@
       }
 
       // โหลดรายการอุปกรณ์ที่ทีมนี้ได้รับมอบหมาย
-      const teamDevSnap = await db.ref(`teams/${emp.teamId}/devices`).get();
+      const teamDevSnap = await db.ref(`teams/${emp.teamId}/equipments`).get();
       allowedDeviceIds = Object.keys(teamDevSnap.val() || {});
 
       // โหลดรายการที่ยืมอยู่

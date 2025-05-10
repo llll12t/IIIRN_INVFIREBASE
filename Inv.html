@@ -133,14 +133,12 @@
       const profile = await liff.getProfile();
       userIdLine = profile.userId;
 
-      // โหลดข้อมูลพนักงานและเช็ค teamId
       const empSnap = await db.ref("employees")
         .orderByChild("userIdLine").equalTo(userIdLine).get();
       if (!empSnap.exists()) {
         alert('ไม่พบข้อมูลพนักงาน'); return liff.closeWindow();
       }
       const emp = Object.values(empSnap.val())[0];
-      console.log("พนักงาน:", emp);
       userName = emp.fullName; userPosition = emp.position;
       document.getElementById("empName").textContent = userName;
       document.getElementById("empPosition").textContent = `ตำแหน่ง: ${userPosition}`;
@@ -148,22 +146,20 @@
         alert('คุณยังไม่ได้รับมอบหมายทีม'); return liff.closeWindow();
       }
 
-      // ตรวจสอบทั้ง path equipments และ devices
       const pathEquip = `teams/${emp.teamId}/equipments`;
       const pathDev   = `teams/${emp.teamId}/devices`;
       const snapE = await db.ref(pathEquip).get();
       const snapD = await db.ref(pathDev).get();
-      console.log(`equipments @ ${pathEquip}`, snapE.val());
-      console.log(`devices    @ ${pathDev}`,   snapD.val());
 
-      let raw = {};
-      if (snapE.exists())      raw = snapE.val();
-      else if (snapD.exists()) raw = snapD.val();
-      else {
+      const raw = snapE.exists()
+        ? snapE.val()
+        : snapD.exists()
+          ? snapD.val()
+          : null;
+      if (!raw) {
         alert('ทีมนี้ยังไม่มีอุปกรณ์มอบหมาย'); return liff.closeWindow();
       }
-      allowedDeviceIds = Object.keys(raw);
-      console.log("allowedDeviceIds:", allowedDeviceIds);
+      allowedDeviceIds = Object.values(raw);
 
       loadBorrowed();
     }
@@ -241,7 +237,6 @@
       const statusEl = document.getElementById(
         currentMode==="borrow" ? "scanStatusBorrow" : "scanStatusReturn"
       );
-      // ตรวจสอบสิทธิ์ก่อน
       if (currentMode === "borrow" && !allowedDeviceIds.includes(deviceId)) {
         statusEl.textContent = `❌ คุณไม่มีสิทธิ์ยืมอุปกรณ์นี้ (รหัส ${deviceId})`;
         return;

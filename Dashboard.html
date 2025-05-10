@@ -424,7 +424,7 @@
 
     // Notify via LINE
     function notifyLine(userId, userName, list) {
-      fetch("https://script.google.com/macros/s/AKfycbwMyWlJ3lu9oKdxIPWaZldMFKz9JcPF2Ugan4HQy8Lgq9nTT8kDsNRIgre3SpXgCqbB/exec", {
+      fetch("https://script.google.com/macros/s/AKfycbyuRIVluTLl2LbluETiGaTOQ4fKfS2V6SY7Yn30izWgBP2UcwUZbdnYr5FhP-nZwQHX/exec", {
         method: "POST", mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, message: `📦 คุณ ${userName} กรุณาคืนอุปกรณ์: ${list}` })

@@ -118,9 +118,9 @@
     let userIdLine = "", userName = "", userPosition = "";
     let basket = [], currentMode = "", pendingMode = null;
     
-    const LIFF_ID_INV = "2007335399-azLMzVDZ";
+    const LIFF_ID = "2007335399-azLMzVDZ";
     async function initLIFF() {
-      await liff.init({ liffId: LIFF_ID_INV });
+      await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) liff.login();
       const profile = await liff.getProfile();
       userIdLine = profile.userId;

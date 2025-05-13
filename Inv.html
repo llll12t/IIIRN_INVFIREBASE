@@ -125,41 +125,42 @@
 
     const LIFF_ID = "2007335399-azLMzVDZ";
 
-    async function initLIFF() {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isLoggedIn()) liff.login();
+// global ตัวแปร
+let emp = null;
+let allowedDeviceIds = [];
 
-      const profile = await liff.getProfile();
-      userIdLine = profile.userId;
+// เรียกใน initLIFF()
+async function initLIFF() {
+  await liff.init({ liffId: LIFF_ID });
+  if (!liff.isLoggedIn()) liff.login();
 
-      // ดึงข้อมูลพนักงาน
-      const empSnap = await db.ref("employees")
-        .orderByChild("userIdLine").equalTo(userIdLine).get();
-      if (!empSnap.exists()) {
-        alert('ไม่พบข้อมูลพนักงาน');
-        return liff.closeWindow();
-      }
-      const emp = Object.values(empSnap.val())[0];
-      userName = emp.fullName;
-      userPosition = emp.position;
-      document.getElementById("empName").textContent = userName;
-      document.getElementById("empPosition").textContent = `ตำแหน่ง: ${userPosition}`;
+  const profile = await liff.getProfile();
+  userIdLine    = profile.userId;
 
-      if (!emp.teamId) {
-        alert('คุณยังไม่ได้รับมอบหมายทีม');
-        return liff.closeWindow();
-      }
+  // ดึงข้อมูลพนักงาน + teamId
+  const empSnap = await db.ref("employees")
+    .orderByChild("userIdLine").equalTo(userIdLine).get();
+  if (!empSnap.exists()) {
+    alert('ไม่พบข้อมูลพนักงาน'); return liff.closeWindow();
+  }
+  emp = Object.values(empSnap.val())[0];
+  if (!emp.teamId) {
+    alert('คุณยังไม่ได้รับมอบหมายทีม'); return liff.closeWindow();
+  }
 
-      // โหลดอุปกรณ์จาก teams/{teamId}/equipments
-      const snap = await db.ref(`teams/${emp.teamId}/equipments`).get();
-      if (!snap.exists()) {
-        alert('ทีมนี้ยังไม่มีอุปกรณ์มอบหมาย');
-        return liff.closeWindow();
-      }
-      allowedDeviceIds = Object.values(snap.val());
-
-      loadBorrowed();
+  // โหลดอุปกรณ์ทั้งหมด แล้วกรอง
+  const devSnap = await db.ref("devices").once("value");
+  allowedDeviceIds = [];
+  devSnap.forEach(ch => {
+    const d = ch.val();
+    // ถ้าไม่มอบหมายให้ทีมใด หรือมอบหมายให้ทีมเรา → เก็บไว้
+    if (!d.teamId || d.teamId === emp.teamId) {
+      allowedDeviceIds.push(ch.key);
     }
+  });
+
+  loadBorrowed();
+}
 
     function showPage(page) {
       ['homePage','borrowPage','returnPage'].forEach(id =>

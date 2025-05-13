@@ -233,31 +233,57 @@
       if (video.srcObject) requestAnimationFrame(() => tick(video));
     }
 
-    async function handleScanResult(deviceId) {
-      const statusEl = document.getElementById(
-        currentMode==="borrow" ? "scanStatusBorrow" : "scanStatusReturn"
-      );
-      if (currentMode === "borrow" && !allowedDeviceIds.includes(deviceId)) {
-        statusEl.textContent = `❌ คุณไม่มีสิทธิ์ยืมอุปกรณ์นี้ (รหัส ${deviceId})`;
-        return;
-      }
-      const snap = await db.ref("devices/"+deviceId).get();
-      if (!snap.exists()) {
-        statusEl.textContent = `❌ ไม่พบอุปกรณ์: ${deviceId}`; return;
-      }
-      const dev = snap.val();
-      if (!dev.deviceName?.trim()) {
-        statusEl.textContent = `⚠️ ไม่มีชื่ออุปกรณ์สำหรับรหัส: ${deviceId}`; return;
-      }
-      if (currentMode==="borrow" && dev.status!=="พร้อมใช้งาน") {
-        statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมยืม`; return;
-      }
-      if (!basket.some(x=>x.id===deviceId)) {
-        basket.push({ id:deviceId, name:dev.deviceName });
-      }
-      statusEl.textContent = `✅ เจออุปกรณ์: ${deviceId} (${dev.deviceName})`;
-      updateList();
+async function handleScanResult(deviceId) {
+  // หาองค์ประกอบสำหรับแสดงสถานะ (ข้อความใต้ปุ่ม Scan)
+  const statusEl = document.getElementById(
+    currentMode === "borrow" ? "scanStatusBorrow" : "scanStatusReturn"
+  );
+
+  // 1. ดึงข้อมูลอุปกรณ์จาก Firebase
+  const snap = await db.ref(`devices/${deviceId}`).get();
+  if (!snap.exists()) {
+    statusEl.textContent = `❌ ไม่พบอุปกรณ์: ${deviceId}`;
+    return;
+  }
+  const dev = snap.val();
+
+  // 2. เช็กว่ามีชื่ออุปกรณ์หรือไม่
+  if (!dev.deviceName?.trim()) {
+    statusEl.textContent = `⚠️ ไม่มีชื่ออุปกรณ์สำหรับรหัส: ${deviceId}`;
+    return;
+  }
+
+  // 3. กรณียืม (borrow) ให้ตรวจสอบทีมและสถานะพร้อมใช้งาน
+  if (currentMode === "borrow") {
+    // ถ้ามอบหมายให้ทีมอื่น → ไม่อนุญาต
+    if (dev.teamId && dev.teamId !== emp.teamId) {
+      statusEl.textContent = `❌ อุปกรณ์นี้มอบหมายให้ทีมอื่น`;
+      return;
     }
+    // ถ้าไม่พร้อมใช้งาน → เตือน
+    if (dev.status !== "พร้อมใช้งาน") {
+      statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมยืม`;
+      return;
+    }
+
+  // 4. กรณีคืน (return) ให้ตรวจสอบว่าอุปกรณ์กำลังใช้งานอยู่
+  } else if (currentMode === "return") {
+    if (dev.status !== "กำลังใช้งาน") {
+      statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมคืน`;
+      return;
+    }
+  }
+
+  // 5. เพิ่มอุปกรณ์ลงในตะกร้า (ถ้ายังไม่อยู่แล้ว)
+  if (!basket.some(x => x.id === deviceId)) {
+    basket.push({ id: deviceId, name: dev.deviceName });
+  }
+
+  // 6. แสดงข้อความสำเร็จและอัปเดตรายการ UI
+  statusEl.textContent = `✅ เจออุปกรณ์: ${deviceId} (${dev.deviceName})`;
+  updateList();
+}
+
 
     function updateList() {
       const listEl = document.getElementById(

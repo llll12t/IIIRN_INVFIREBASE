@@ -128,39 +128,52 @@
 // global ตัวแปร
 let emp = null;
 
-
-// เรียกใน initLIFF()
 async function initLIFF() {
+  // 1. เริ่ม LIFF
   await liff.init({ liffId: LIFF_ID });
-  if (!liff.isLoggedIn()) liff.login();
+  if (!liff.isLoggedIn()) await liff.login();
 
+  // 2. ดึง profile LINE
   const profile = await liff.getProfile();
-  userIdLine    = profile.userId;
+  userIdLine = profile.userId;
 
-  // ดึงข้อมูลพนักงาน + teamId
-  const empSnap = await db.ref("employees")
-    .orderByChild("userIdLine").equalTo(userIdLine).get();
+  // 3. ดึงข้อมูลพนักงานจาก Firebase
+  const empSnap = await db.ref('employees')
+    .orderByChild('userIdLine').equalTo(userIdLine).get();
   if (!empSnap.exists()) {
-    alert('ไม่พบข้อมูลพนักงาน'); return liff.closeWindow();
+    alert('ไม่พบข้อมูลพนักงาน');
+    return liff.closeWindow();
   }
   emp = Object.values(empSnap.val())[0];
+
+  // 4. ตั้งชื่อ-ตำแหน่ง และเขียนลงหน้า HTML
+  userName     = emp.fullName  || '—';
+  userPosition = emp.position  || '—';
+  document.getElementById('empName').textContent     = userName;
+  document.getElementById('empPosition').textContent = `ตำแหน่ง: ${userPosition}`;
+
+  // 5. เช็กทีม
   if (!emp.teamId) {
-    alert('คุณยังไม่ได้รับมอบหมายทีม'); return liff.closeWindow();
+    alert('คุณยังไม่ได้รับมอบหมายทีม');
+    return liff.closeWindow();
   }
 
-  // โหลดอุปกรณ์ทั้งหมด แล้วกรอง
-  const devSnap = await db.ref("devices").once("value");
+  // 6. โหลดอุปกรณ์ทั้งหมด แล้วกรองเอาเฉพาะ
+  //    – อุปกรณ์ที่ยังไม่มอบหมาย (d.teamId == null)
+  //    – อุปกรณ์ที่มอบหมายให้ทีมเรา (d.teamId === emp.teamId)
+  const devSnap = await db.ref('devices').once('value');
   allowedDeviceIds = [];
   devSnap.forEach(ch => {
     const d = ch.val();
-    // ถ้าไม่มอบหมายให้ทีมใด หรือมอบหมายให้ทีมเรา → เก็บไว้
     if (!d.teamId || d.teamId === emp.teamId) {
       allowedDeviceIds.push(ch.key);
     }
   });
 
+  // 7. โหลดรายการที่กำลังยืมอยู่
   loadBorrowed();
 }
+
 
     function showPage(page) {
       ['homePage','borrowPage','returnPage'].forEach(id =>

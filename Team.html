@@ -110,6 +110,7 @@
     const clearMembers   = document.getElementById('clearMembersBtn');
     const clearEquip     = document.getElementById('clearEquipBtn');
 
+    
     openBtn.onclick = () => openModal();
     closeBtn.onclick = cancelBtn.onclick = () => resetForm();
 
@@ -208,15 +209,24 @@
       });
     }
 
-    async function syncTeamMembers(teamId, newIds) {
-      const oldSnap = await dbRef.child('employees').orderByChild('teamId').equalTo(teamId).once('value');
-      const updates = {};
-      oldSnap.forEach(ch => {
-        if (!newIds.includes(ch.key)) updates[`employees/${ch.key}/teamId`] = null;
-      });
-      newIds.forEach(uid => updates[`employees/${uid}/teamId`] = teamId);
-      await dbRef.update(updates);
-    }
+async function syncTeamMembers(teamId, newIds) {
+  // ดึงรายการอุปกรณ์เดิมที่ผูกกับทีมนี้
+  const oldSnap = await dbRef.child('teams/'+teamId+'/equipments').once('value');
+  const oldIds = oldSnap.val()||[];
+  const upd = {};
+
+  // อัปเดตทีมให้สมาชิก
+  await /* existing code */;
+
+  // ผูก devices/{id}/teamId = teamId
+  newIds.forEach(id => upd[`devices/${id}/teamId`] = teamId);
+  // ถ้าเคยผูกไว้ แต่ตอนนี้เอาออก → ลบค่า teamId
+  oldIds.filter(id=>!newIds.includes(id))
+        .forEach(id=> upd[`devices/${id}/teamId`] = null);
+
+  await dbRef.update(upd);
+}
+
 
     form.onsubmit = async e => {
       e.preventDefault();

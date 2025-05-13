@@ -247,39 +247,48 @@ async function handleScanResult(deviceId) {
     currentMode === "borrow" ? "scanStatusBorrow" : "scanStatusReturn"
   );
 
-  // 1) เช็กสิทธิ์จาก allowedDeviceIds
-  if (currentMode === "borrow" && !allowedDeviceIds.includes(deviceId)) {
-    statusEl.textContent = `❌ คุณไม่มีสิทธิ์ยืมอุปกรณ์นี้ (รหัส ${deviceId})`;
+  // 1) เช็กสิทธิ์ทั้งยืมและคืนด้วย allowedDeviceIds
+  if (!allowedDeviceIds.includes(deviceId)) {
+    statusEl.textContent = 
+      `❌ คุณไม่มีสิทธิ์${currentMode === "borrow" ? "ยืม" : "คืน"}อุปกรณ์นี้ (รหัส ${deviceId})`;
     return;
   }
 
-  // 2) ดึงข้อมูลและตรวจรายการอื่นๆ ตามปกติ
+  // 2) ดึงข้อมูลอุปกรณ์
   const snap = await db.ref(`devices/${deviceId}`).get();
   if (!snap.exists()) {
     statusEl.textContent = `❌ ไม่พบอุปกรณ์: ${deviceId}`;
     return;
   }
   const dev = snap.val();
-  if (!dev.deviceName?.trim()) {
-    statusEl.textContent = `⚠️ ไม่มีชื่ออุปกรณ์สำหรับรหัส: ${deviceId}`;
-    return;
-  }
+
+  // 3) สำหรับยืม ให้เช็กว่าพร้อมใช้งานหรือไม่
   if (currentMode === "borrow" && dev.status !== "พร้อมใช้งาน") {
     statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมยืม`;
     return;
   }
-  if (currentMode === "return" && dev.status !== "กำลังใช้งาน") {
-    statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมคืน`;
-    return;
+
+  // 4) สำหรับคืน ให้เช็กว่ามีสถานะกำลังใช้งาน และเป็นของคุณ
+  if (currentMode === "return") {
+    if (dev.status !== "กำลังใช้งาน") {
+      statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมคืน`;
+      return;
+    }
+    // **ถ้าต้องการห้ามคืนของคนอื่น ให้เช็ก lastUserId ด้วย**
+    if (dev.lastUserId !== userIdLine) {
+      statusEl.textContent = `❌ อุปกรณ์นี้ถูกยืมโดยคนอื่น คุณไม่สามารถคืนได้`;
+      return;
+    }
   }
 
-  // 3) เพิ่มลงตะกร้า
+  // 5) เพิ่มลงตะกร้า
   if (!basket.some(x => x.id === deviceId)) {
     basket.push({ id: deviceId, name: dev.deviceName });
   }
   statusEl.textContent = `✅ เจออุปกรณ์: ${deviceId} (${dev.deviceName})`;
   updateList();
 }
+
 
 
     function updateList() {

@@ -18,11 +18,11 @@
   <aside class="w-64 bg-gray-800 p-6">
     <h1 class="text-white text-lg font-bold mb-6">ระบบยืม-คืน & แจ้งซ่อม</h1>
     <nav class="space-y-4">
-      <a href="./Dashboard.html" class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">หน้าหลัก</a>
-      <a href="./Devices.html" class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">อุปกรณ์</a>
-      <a href="./User.html" class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">สมาชิก</a>
-      <a href="./Team.html" class="block bg-gray-700 bg-opacity-50 text-white py-2 px-4 rounded">ทีม</a>
-      <a href="./Setting.html" class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">ตั้งค่าแจ้งเตือน</a>
+      <a href="./Dashboard.html"   class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">หน้าหลัก</a>
+      <a href="./Devices.html"     class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">อุปกรณ์</a>
+      <a href="./User.html"        class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">สมาชิก</a>
+      <a href="./Team.html"        class="block bg-gray-700 bg-opacity-50 text-white py-2 px-4 rounded">ทีม</a>
+      <a href="./Setting.html"     class="block bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded">ตั้งค่าแจ้งเตือน</a>
     </nav>
   </aside>
 
@@ -32,11 +32,9 @@
       <h2 class="text-2xl font-bold">จัดการทีม</h2>
       <div class="space-x-2">
         <button id="openTeamModal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ เพิ่มทีม</button>
-        <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">ลบทีมทั้งหมด</button>
+        <button id="clearAllBtn"    class="bg-red-600  text-white px-4 py-2 rounded hover:bg-red-700">ลบทีมทั้งหมด</button>
       </div>
     </div>
-
-    <!-- Team List -->
     <div class="bg-white rounded-lg shadow overflow-x-auto">
       <table class="min-w-full table-auto">
         <thead class="bg-gray-800 text-white">
@@ -61,59 +59,67 @@
       <form id="teamForm" class="space-y-4">
         <div>
           <label for="teamName" class="block text-sm font-medium mb-1">ชื่อทีม</label>
-          <input id="teamName" name="teamName" type="text" required class="w-full border border-gray-300 rounded px-3 py-2" />
+          <input id="teamName" name="teamName" type="text" required
+                 class="w-full border border-gray-300 rounded px-3 py-2" />
         </div>
         <div>
           <label for="teamLeader" class="block text-sm font-medium mb-1">หัวหน้าทีม</label>
-          <select id="teamLeader" name="teamLeader" required class="w-full border border-gray-300 rounded px-3 py-2">
+          <select id="teamLeader" name="teamLeader" required
+                  class="w-full border border-gray-300 rounded px-3 py-2">
             <option value="">-- เลือกหัวหน้าทีม --</option>
           </select>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">สมาชิกทีม</label>
           <div class="flex space-x-2 mb-2">
-            <input id="memberFilter" type="text" placeholder="ค้นหาชื่อพนักงาน..." class="flex-1 border border-gray-300 rounded px-3 py-1" />
-            <button type="button" id="clearMembersBtn" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">เคลียร์สมาชิก</button>
+            <input id="memberFilter" type="text" placeholder="ค้นหาชื่อพนักงาน..."
+                   class="flex-1 border border-gray-300 rounded px-3 py-1" />
+            <button type="button" id="clearMembersBtn"
+                    class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">เคลียร์สมาชิก</button>
           </div>
           <div id="memberSelect" class="border border-gray-300 rounded p-2 h-32 overflow-y-auto"></div>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">อุปกรณ์ที่มอบหมาย</label>
           <div class="flex space-x-2 mb-2">
-            <input id="equipFilter" type="text" placeholder="ค้นหาอุปกรณ์..." class="flex-1 border border-gray-300 rounded px-3 py-1" />
-            <button type="button" id="clearEquipBtn" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">เคลียร์อุปกรณ์</button>
+            <input id="equipFilter" type="text" placeholder="ค้นหาอุปกรณ์..."
+                   class="flex-1 border border-gray-300 rounded px-3 py-1" />
+            <button type="button" id="clearEquipBtn"
+                    class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">เคลียร์อุปกรณ์</button>
           </div>
           <div id="equipmentSelect" class="border border-gray-300 rounded p-2 h-32 overflow-y-auto"></div>
         </div>
         <div class="flex justify-end space-x-2 pt-4">
-          <button type="button" id="cancelTeamBtn" class="px-4 py-2 border rounded hover:bg-gray-100">ยกเลิก</button>
-          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">บันทึก</button>
+          <button type="button" id="cancelTeamBtn"
+                  class="px-4 py-2 border rounded hover:bg-gray-100">ยกเลิก</button>
+          <button type="submit"
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">บันทึก</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
-    // const dbRef = firebase.database().ref();
+    const dbRef = firebase.database().ref();
     let employees = {}, devices = {}, editingKey = null;
 
-    // Elements
-    const openBtn        = document.getElementById('openTeamModal');
-    const clearAllBtn    = document.getElementById('clearAllBtn');
-    const modal          = document.getElementById('teamModal');
-    const closeBtn       = document.getElementById('closeTeamModal');
-    const cancelBtn      = document.getElementById('cancelTeamBtn');
-    const form           = document.getElementById('teamForm');
-    const teamTable      = document.getElementById('teamTable');
-    const memberFilter   = document.getElementById('memberFilter');
-    const equipFilter    = document.getElementById('equipFilter');
-    const clearMembers   = document.getElementById('clearMembersBtn');
-    const clearEquip     = document.getElementById('clearEquipBtn');
+    // Element refs
+    const openBtn      = document.getElementById('openTeamModal');
+    const clearAllBtn  = document.getElementById('clearAllBtn');
+    const modal        = document.getElementById('teamModal');
+    const closeBtn     = document.getElementById('closeTeamModal');
+    const cancelBtn    = document.getElementById('cancelTeamBtn');
+    const form         = document.getElementById('teamForm');
+    const teamTable    = document.getElementById('teamTable');
+    const memberFilter = document.getElementById('memberFilter');
+    const equipFilter  = document.getElementById('equipFilter');
+    const clearMembers = document.getElementById('clearMembersBtn');
+    const clearEquip   = document.getElementById('clearEquipBtn');
 
-    
-    openBtn.onclick = () => openModal();
-    closeBtn.onclick = cancelBtn.onclick = () => resetForm();
+    openBtn.onclick          = openModal;
+    closeBtn.onclick         = cancelBtn.onclick = resetForm;
 
+    // 1) โหลด Employees & Devices → แสดง field + ตาราง
     async function loadEmployeesAndDevices() {
       const [empSnap, devSnap] = await Promise.all([
         dbRef.child('employees').once('value'),
@@ -126,6 +132,7 @@
       await loadTeams();
     }
 
+    // 2) สร้าง select / checkbox พนักงาน
     function populateEmployeeFields() {
       const leaderSel = document.getElementById('teamLeader');
       const memDiv    = document.getElementById('memberSelect');
@@ -134,66 +141,81 @@
       Object.entries(employees).forEach(([id, emp]) => {
         const name = emp.fullName || id;
         const isAssigned = emp.teamId && emp.teamId !== editingKey;
+        // option for leader
         const opt = document.createElement('option');
         opt.value = id;
         opt.textContent = name + (isAssigned ? ' (อยู่ทีมอื่น)' : '');
         if (isAssigned) opt.disabled = true;
         leaderSel.appendChild(opt);
+        // checkbox for members
         const lbl = document.createElement('label');
         lbl.className = 'block mb-1 flex items-center';
-        const cb  = document.createElement('input');
-        cb.type  = 'checkbox'; cb.name = 'members'; cb.value = id;
+        const cb = document.createElement('input');
+        cb.type  = 'checkbox';
+        cb.name  = 'members';
+        cb.value = id;
         if (isAssigned) {
-          cb.disabled = true; lbl.classList.add('opacity-50','cursor-not-allowed');
+          cb.disabled = true;
+          lbl.classList.add('opacity-50','cursor-not-allowed');
         }
         lbl.appendChild(cb);
-        lbl.append(' ' + name + (isAssigned ? ' (อยู่ทีมอื่น)' : ''));
+        lbl.append(` ${name}${isAssigned?' (อยู่ทีมอื่น)':''}`);
         memDiv.appendChild(lbl);
       });
-      // filter logic
+      // filter & clear
       memberFilter.value = '';
       memberFilter.oninput = () => {
         const q = memberFilter.value.toLowerCase();
-        memDiv.querySelectorAll('label').forEach(lbl => {
-          lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? 'block' : 'none';
-        });
+        memDiv.querySelectorAll('label')
+              .forEach(lbl => lbl.style.display = lbl.textContent.toLowerCase().includes(q)?'block':'none');
       };
-      // clear selection
       clearMembers.onclick = () => {
-        memDiv.querySelectorAll('input[name="members"]:checked').forEach(cb => cb.checked = false);
+        memDiv.querySelectorAll('input[name="members"]:checked')
+              .forEach(cb => cb.checked = false);
       };
     }
 
+    // 3) สร้าง checkbox อุปกรณ์ พร้อม disable เมื่อ assigned ทีมอื่น
     function populateDeviceFields() {
       const eqDiv = document.getElementById('equipmentSelect');
       eqDiv.innerHTML = '';
       Object.entries(devices).forEach(([id, dev]) => {
-        const display = (dev.code||id)+' - '+(dev.name||dev.deviceName||'');
+        const display    = (dev.code||id) + ' – ' + (dev.name||dev.deviceName||'');
+        const isAssigned = dev.teamId && dev.teamId !== editingKey;
         const lbl = document.createElement('label');
-        lbl.className = 'block mb-1';
-        const cb  = document.createElement('input');
-        cb.type = 'checkbox'; cb.name = 'equipments'; cb.value = id;
+        lbl.classList.add('block','mb-1','flex','items-center');
+        if (isAssigned) {
+          lbl.classList.add('opacity-50','cursor-not-allowed');
+          lbl.style.pointerEvents = 'none';
+        }
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.name = 'equipments';
+        cb.value = id;
+        if (isAssigned) cb.disabled = true;
         lbl.appendChild(cb);
-        lbl.append(' '+display);
+        lbl.append(` ${display}${isAssigned?' (อยู่ในทีมอื่น)':''}`);
         eqDiv.appendChild(lbl);
       });
+      // filter & clear
       equipFilter.value = '';
       equipFilter.oninput = () => {
         const q = equipFilter.value.toLowerCase();
-        eqDiv.querySelectorAll('label').forEach(lbl => {
-          lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? 'block' : 'none';
-        });
+        eqDiv.querySelectorAll('label')
+             .forEach(lbl => lbl.style.display = lbl.textContent.toLowerCase().includes(q)?'block':'none');
       };
       clearEquip.onclick = () => {
-        eqDiv.querySelectorAll('input[name="equipments"]:checked').forEach(cb => cb.checked = false);
+        eqDiv.querySelectorAll('input[name="equipments"]:checked')
+             .forEach(cb => cb.checked = false);
       };
     }
 
+    // 4) แสดงตารางทีม
     async function loadTeams() {
       const snap = await dbRef.child('teams').once('value');
       const teams = snap.val() || {};
       teamTable.innerHTML = '';
-      Object.entries(teams).forEach(([key, t]) => {
+      Object.entries(teams).forEach(([key,t]) => {
         const leaderName = employees[t.leader]?.fullName || t.leader;
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -202,89 +224,86 @@
           <td class="px-4 py-2">${t.members?.length||0}</td>
           <td class="px-4 py-2">${t.equipments?.length||0}</td>
           <td class="px-4 py-2 space-x-2">
-            <button onclick="editTeam('${key}')" class="text-blue-600 hover:underline">แก้ไข</button>
-            <button onclick="deleteTeam('${key}')" class="text-red-600 hover:underline">ลบ</button>
+            <button onclick="editTeam('${key}')"
+                    class="text-blue-600 hover:underline">แก้ไข</button>
+            <button onclick="deleteTeam('${key}')"
+                    class="text-red-600  hover:underline">ลบ</button>
           </td>`;
         teamTable.appendChild(tr);
       });
     }
 
-async function syncTeamMembers(teamId, newIds) {
-  // ดึงรายการอุปกรณ์เดิมที่ผูกกับทีมนี้
-  const oldSnap = await dbRef.child('teams/'+teamId+'/equipments').once('value');
-  const oldIds = oldSnap.val()||[];
-  const upd = {};
+    // 5) ซิงก์ teamId → employees & devices
+    async function syncTeamMembers(teamId, memberIds, equipmentIds) {
+      const updates = {};
+      // พนักงาน
+      memberIds.forEach(id => {
+        updates[`employees/${id}/teamId`] = teamId;
+      });
+      // อุปกรณ์
+      equipmentIds.forEach(id => {
+        updates[`devices/${id}/teamId`] = teamId;
+      });
+      await dbRef.update(updates);
+    }
 
-  // อัปเดตทีมให้สมาชิก
-  await /* existing code */;
-
-  // ผูก devices/{id}/teamId = teamId
-  newIds.forEach(id => upd[`devices/${id}/teamId`] = teamId);
-  // ถ้าเคยผูกไว้ แต่ตอนนี้เอาออก → ลบค่า teamId
-  oldIds.filter(id=>!newIds.includes(id))
-        .forEach(id=> upd[`devices/${id}/teamId`] = null);
-
-  await dbRef.update(upd);
-}
-
-
+    // 6) บันทึก form
     form.onsubmit = async e => {
       e.preventDefault();
       const data = {
-        name: form.teamName.value.trim(),
-        leader: form.teamLeader.value,
-        members: [...form.querySelectorAll('input[name="members"]:checked')].map(cb=>cb.value),
+        name:       form.teamName.value.trim(),
+        leader:     form.teamLeader.value,
+        members:    [...form.querySelectorAll('input[name="members"]:checked')].map(cb=>cb.value),
         equipments: [...form.querySelectorAll('input[name="equipments"]:checked')].map(cb=>cb.value)
       };
+
       if (editingKey) {
+        // ซิงก์ assignment ก่อนเพื่อให้ dev.teamId ถูกเซ็ต
+        await syncTeamMembers(editingKey, [data.leader,...data.members], data.equipments);
+        // อัพเดตข้อมูลทีม
         await dbRef.child(`teams/${editingKey}`).update(data);
-        await syncTeamMembers(editingKey, [data.leader, ...data.members]);
       } else {
-        const ref = await dbRef.child('teams').push(data);
-        await syncTeamMembers(ref.key, [data.leader, ...data.members]);
+        // สร้างทีมใหม่
+        const ref = dbRef.child('teams').push();
+        await ref.set(data);
+        await syncTeamMembers(ref.key, [data.leader,...data.members], data.equipments);
       }
+
       resetForm();
       await loadEmployeesAndDevices();
-      await cleanupOrphanedAssignments();
     };
 
+    // 7) ลบทีมเดียว + เคลียร์ assignment
     window.deleteTeam = async key => {
       if (!confirm('คุณแน่ใจที่จะลบทีมนี้?')) return;
-      const snap = await dbRef.child('employees').orderByChild('teamId').equalTo(key).once('value');
-      const upd = {};
-      snap.forEach(ch => upd[`employees/${ch.key}/teamId`] = null);
-      await dbRef.update(upd);
-      await dbRef.child(`teams/${key}`).remove();
+      const updates = {};
+      // เคลียร์ employees
+      const empSnap = await dbRef.child('employees')
+        .orderByChild('teamId').equalTo(key).once('value');
+      empSnap.forEach(ch => updates[`employees/${ch.key}/teamId`] = null);
+      // เคลียร์ devices
+      const devSnap = await dbRef.child('devices')
+        .orderByChild('teamId').equalTo(key).once('value');
+      devSnap.forEach(ch => updates[`devices/${ch.key}/teamId`] = null);
+      // ลบ node ทีม
+      updates[`teams/${key}`] = null;
+      await dbRef.update(updates);
       await loadEmployeesAndDevices();
-      await cleanupOrphanedAssignments();
     };
 
+    // 8) ลบทั้งหมด
     clearAllBtn.onclick = async () => {
-      if (!confirm('ลบทีมทั้งหมดและเคลียร์ข้อมูลทุกคนใช่หรือไม่?')) return;
+      if (!confirm('ลบทีมทั้งหมดและเคลียร์ assignment ใช่หรือไม่?')) return;
+      const updates = {};
       const teamSnap = await dbRef.child('teams').once('value');
-      const updTeams = {};
-      teamSnap.forEach(ch => updTeams[`teams/${ch.key}`] = null);
-      await dbRef.update(updTeams);
+      teamSnap.forEach(ch => updates[`teams/${ch.key}`] = null);
       const empSnap = await dbRef.child('employees').once('value');
-      const updEmps = {};
-      empSnap.forEach(ch => updEmps[`employees/${ch.key}/teamId`] = null);
-      await dbRef.update(updEmps);
+      empSnap.forEach(ch => updates[`employees/${ch.key}/teamId`] = null);
+      const devSnap = await dbRef.child('devices').once('value');
+      devSnap.forEach(ch => updates[`devices/${ch.key}/teamId`] = null);
+      await dbRef.update(updates);
       await loadEmployeesAndDevices();
     };
-
-    async function cleanupOrphanedAssignments() {
-      const teamsSnap = await dbRef.child('teams').once('value');
-      const valid = new Set(Object.keys(teamsSnap.val()||{}));
-      const empSnap = await dbRef.child('employees').once('value');
-      const up = {};
-      empSnap.forEach(ch => {
-        const emp = ch.val();
-        if (emp.teamId && !valid.has(emp.teamId)) {
-          up[`employees/${ch.key}/teamId`] = null;
-        }
-      });
-      if (Object.keys(up).length) await dbRef.update(up);
-    }
 
     function openModal() {
       editingKey = null;
@@ -299,6 +318,8 @@ async function syncTeamMembers(teamId, newIds) {
       form.reset();
       modal.classList.add('hidden');
     }
+
+    // 9) แก้ไขทีม
     window.editTeam = async key => {
       editingKey = key;
       document.getElementById('modalTitle').textContent = 'แก้ไขทีม';
@@ -307,19 +328,15 @@ async function syncTeamMembers(teamId, newIds) {
       form.teamName.value = t.name;
       form.teamLeader.value = t.leader;
       populateEmployeeFields();
-      form.querySelectorAll('input[name="members"]').forEach(cb => {
-        cb.checked = t.members?.includes(cb.value);
-      });
+      form.querySelectorAll('input[name="members"]').forEach(cb => { cb.checked = t.members?.includes(cb.value); });
       populateDeviceFields();
-      form.querySelectorAll('input[name="equipments"]').forEach(cb => {
-        cb.checked = t.equipments?.includes(cb.value);
-      });
+      form.querySelectorAll('input[name="equipments"]').forEach(cb => { cb.checked = t.equipments?.includes(cb.value); });
       modal.classList.remove('hidden');
     };
 
+    // 10) เริ่มต้น
     window.onload = async () => {
       await loadEmployeesAndDevices();
-      await cleanupOrphanedAssignments();
     };
   </script>
 </body>

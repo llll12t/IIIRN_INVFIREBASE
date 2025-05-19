@@ -299,6 +299,22 @@
       updateList();
     }
 
+    function stopScan() {
+      if (scanLoopId) cancelAnimationFrame(scanLoopId);
+      [videoBorrow, videoReturnEl].forEach(vid => {
+        if (vid.srcObject) {
+          vid.srcObject.getTracks().forEach(t => t.stop());
+          vid.srcObject = null;
+          vid.classList.add('hidden');
+        }
+      });
+      scanned = false;
+      basket = [];
+      updateList();
+      document.getElementById('scanStatusBorrow').textContent = '';
+      document.getElementById('scanStatusReturn').textContent = '';
+    }
+
     function openModal(mode) {
       pendingMode = mode;
       document.getElementById('modalConfirmBtn').disabled = false;
@@ -321,6 +337,7 @@
       btn.textContent = 'กำลังบันทึก...';
       try {
         await submitAction(pendingMode);
+        stopScan();
         document.getElementById('modalTitle').textContent = 'สำเร็จแล้ว!';
         document.getElementById('modalMessage').textContent = '✅ บันทึกสำเร็จ ระบบจะกลับหน้าหลักในอีก';
         document.getElementById('modalActions').classList.add('hidden');
@@ -379,3 +396,6 @@
 
 </body>
 </html>
+
+
+

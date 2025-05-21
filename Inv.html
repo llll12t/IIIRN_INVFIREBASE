@@ -63,6 +63,13 @@
       <button onclick="showPage('home')"
               class="flex-1 bg-gray-200 text-primary py-3 rounded-full font-bold">← กลับ</button>
     </div>
+    <!-- Manual input -->
+    <div class="flex space-x-2 mb-4">
+      <input id="manualDeviceIdBorrow" type="text" placeholder="รหัสอุปกรณ์"
+             class="flex-1 border p-2 rounded" />
+      <button id="btnAddManualBorrow"
+              class="bg-gray-200 text-primary py-3 px-4 rounded-lg font-bold">เพิ่ม</button>
+    </div>
     <video id="video" playsinline class="w-full h-64 object-cover rounded-lg mb-4 hidden"></video>
     <ul id="basketBorrow" class="space-y-2 mb-4"></ul>
     <p id="scanStatusBorrow" class="font-semibold mb-4"></p>
@@ -80,6 +87,13 @@
               class="flex-1 bg-primary text-white py-3 rounded-full font-bold">Scan QR</button>
       <button onclick="showPage('home')"
               class="flex-1 bg-gray-200 text-primary py-3 rounded-full font-bold">← กลับ</button>
+    </div>
+    <!-- Manual input -->
+    <div class="flex space-x-2 mb-4">
+      <input id="manualDeviceIdReturn" type="text" placeholder="รหัสอุปกรณ์"
+             class="flex-1 border p-2 rounded" />
+      <button id="btnAddManualReturn"
+              class="bg-gray-200 text-primary py-3 px-4 rounded-lg font-bold">เพิ่ม</button>
     </div>
     <video id="videoReturn" playsinline class="w-full h-64 object-cover rounded-lg mb-4 hidden"></video>
     <ul id="basketReturn" class="space-y-2 mb-4"></ul>
@@ -218,7 +232,7 @@
         currentMode==="borrow" ? "scanStatusBorrow" : "scanStatusReturn"
       );
       if (!allowedDeviceIds.includes(deviceId)) {
-        statusEl.textContent = `❌ คุณไม่มีสิทธิ์${currentMode==="borrow"?"ยืม":"คืน"} (รหัส ${deviceId})`;
+        statusEl.textContent = `❌ คุณไม่ได้สิทธิ์${currentMode==="borrow"?"ยืม":"คืน"} (รหัส ${deviceId})`;
         return;
       }
       const snap = await db.ref(`devices/${deviceId}`).get();
@@ -309,7 +323,6 @@
         if (count <= 0) {
           clearInterval(iv);
           closeModal();
-          // รีเฟรชหน้าใหม่ทั้งหมด
           window.location.reload();
         } else {
           cnt.textContent = count;
@@ -339,6 +352,21 @@
         });
       }
     }
+
+    // Manual add handlers
+    function handleManual(mode) {
+      currentMode = mode;
+      const inputId = mode==='borrow' ? 'manualDeviceIdBorrow' : 'manualDeviceIdReturn';
+      const id = document.getElementById(inputId).value.trim();
+      if (id) {
+        handleScanResult(id);
+        document.getElementById(inputId).value = '';
+      }
+    }
+
+    // Attach manual add events
+    document.getElementById('btnAddManualBorrow').addEventListener('click', () => handleManual('borrow'));
+    document.getElementById('btnAddManualReturn').addEventListener('click', () => handleManual('return'));
 
     initLIFF();
   </script>

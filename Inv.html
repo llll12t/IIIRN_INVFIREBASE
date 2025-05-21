@@ -14,6 +14,8 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- (หากมี SweetAlert2) -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
   <script src="firebase-config.js"></script>
   <script>
     tailwind.config = {
@@ -58,7 +60,7 @@
     </div>
     <div class="flex space-x-2 mb-4">
       <input id="manualDeviceBorrowInput" type="text" placeholder="กรอกรหัสอุปกรณ์" class="flex-1 border p-2 rounded" />
-      <button id="manualAddBorrowBtn" class="bg-green-950 text-white px-4 py-2 rounded-full">เพิ่มด้วยรหัส</button>
+      <button id="manualAddBorrowBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่มด้วยรหัส</button>
     </div>
     <video id="video" playsinline class="w-full h-64 object-cover rounded-lg mb-4 hidden"></video>
     <ul id="basketBorrow" class="space-y-2 mb-4"></ul>
@@ -75,7 +77,7 @@
     </div>
     <div class="flex space-x-2 mb-4">
       <input id="manualDeviceReturnInput" type="text" placeholder="กรอกรหัสอุปกรณ์" class="flex-1 border p-2 rounded" />
-      <button id="manualAddReturnBtn" class="bg-green-950 text-white px-4 py-2 rounded-full">เพิ่มด้วยรหัส</button>
+      <button id="manualAddReturnBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่มด้วยรหัส</button>
     </div>
     <video id="videoReturn" playsinline class="w-full h-64 object-cover rounded-lg mb-4 hidden"></video>
     <ul id="basketReturn" class="space-y-2 mb-4"></ul>
@@ -95,6 +97,14 @@
       <div id="modalClose" class="flex justify-end hidden">
         <button onclick="closeModal()" class="px-4 py-2 bg-primary text-white rounded-lg">ปิด (<span id="countdown">3</span>)</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Geofence Error Modal -->
+  <div id="geoModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center">
+      <p id="geoMessage" class="mb-6 text-red-500 font-semibold"></p>
+      <button onclick="closeGeoModal()" class="px-6 py-3 bg-primary text-white rounded-full">ตกลง</button>
     </div>
   </div>
 
@@ -129,6 +139,14 @@
       });
     }
 
+    function showGeoModal(msg) {
+      document.getElementById('geoMessage').textContent = msg;
+      document.getElementById('geoModal').classList.remove('hidden');
+    }
+    function closeGeoModal() {
+      document.getElementById('geoModal').classList.add('hidden');
+    }
+
     let userIdLine = '', userName = '', userPosition = '';
     let allowedDeviceIds = [], basket = [], currentMode = '', pendingMode = null;
     const LIFF_ID = "2007335399-azLMzVDZ";
@@ -160,12 +178,10 @@
         try {
           const inZone = await checkGeofence();
           if (!inZone) {
-            alert(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม. ของจุดบริการ`);
-            return;
+            return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม. ของจุดบริการ`);
           }
         } catch (e) {
-          alert(`❌ ไม่สามารถตรวจสอบตำแหน่ง: ${e}`);
-          return;
+          return showGeoModal(`❌ ${e}`);
         }
       }
       ['homePage','borrowPage','returnPage'].forEach(id =>
@@ -214,14 +230,22 @@
     document.getElementById('scanReturnBtn').addEventListener('click', () => startScan('return'));
 
     document.getElementById('manualAddBorrowBtn').addEventListener('click', async () => {
-      const ok = await checkGeofence().catch(e => { alert(e); return false; });
-      if (!ok) return;
+      try {
+        const inZone = await checkGeofence();
+        if (!inZone) return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม.`);
+      } catch (e) {
+        return showGeoModal(`❌ ${e}`);
+      }
       const id = document.getElementById('manualDeviceBorrowInput').value.trim();
       handleScanResult(id);
     });
     document.getElementById('manualAddReturnBtn').addEventListener('click', async () => {
-      const ok = await checkGeofence().catch(e => { alert(e); return false; });
-      if (!ok) return;
+      try {
+        const inZone = await checkGeofence();
+        if (!inZone) return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม.`);
+      } catch (e) {
+        return showGeoModal(`❌ ${e}`);
+      }
       const id = document.getElementById('manualDeviceReturnInput').value.trim();
       handleScanResult(id);
     });
@@ -327,7 +351,7 @@
       } catch (e) {
         console.error(e);
         btn.disabled = false; btn.textContent = 'ยืนยัน';
-        alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
+        showGeoModal('❌ เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
       }
     }
 

@@ -27,11 +27,7 @@
           }
         }
       }
-    };
-
-    // ======= ตรงนี้คือ Flag สำหรับเปิด/ปิดการตรวจสอบตำแหน่ง =======
-    const USE_GEOFENCE = flase; // ตั้งเป็น true หากต้องการตรวจสอบตำแหน่ง, false หากไม่ต้องการ
-    // =================================================================
+    }
   </script>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -113,9 +109,9 @@
   </div>
 
   <script>
-    // Geofence config (ไม่ต้องแก้)
-    const GEOFENCE_LAT = 18.7525020;
-    const GEOFENCE_LNG = 99.0759761;
+    // Geofence config
+    const GEOFENCE_LAT = 13.73544422382287;
+    const GEOFENCE_LNG = 100.62405981451602;
     const GEOFENCE_RAD = 25; // meters
 
     function calcDistance(lat1, lng1, lat2, lng2) {
@@ -178,8 +174,7 @@
     }
 
     async function showPage(page) {
-      // ถ้าเปิด USE_GEOFENCE = true จึงเช็กตำแหน่งก่อน สลับหน้า
-      if ((page === 'borrow' || page === 'return') && USE_GEOFENCE) {
+      if (page==='borrow' || page==='return') {
         try {
           const inZone = await checkGeofence();
           if (!inZone) {
@@ -194,15 +189,15 @@
       );
       basket = []; updateList();
       document.getElementById(
-        page === 'borrow' ? 'scanStatusBorrow' : 'scanStatusReturn'
+        page==='borrow' ? 'scanStatusBorrow' : 'scanStatusReturn'
       ).textContent = '';
-      const vid = page === 'borrow' ? document.getElementById('video') : document.getElementById('videoReturn');
+      const vid = page==='borrow' ? document.getElementById('video') : document.getElementById('videoReturn');
       if (vid.srcObject) {
         vid.srcObject.getTracks().forEach(t => t.stop());
         vid.classList.add('hidden');
       }
       currentMode = page;
-      if (page === 'home') loadBorrowed();
+      if (page==='home') loadBorrowed();
     }
 
     async function loadBorrowed() {
@@ -212,7 +207,7 @@
       const snap = await db.ref('devices').once('value');
       snap.forEach(ch => {
         const d = ch.val();
-        if (d.status === 'กำลังใช้งาน' && d.lastUserId === userIdLine) {
+        if (d.status==='กำลังใช้งาน' && d.lastUserId===userIdLine) {
           has = true;
           tbody.innerHTML += `
             <tr>
@@ -235,27 +230,21 @@
     document.getElementById('scanReturnBtn').addEventListener('click', () => startScan('return'));
 
     document.getElementById('manualAddBorrowBtn').addEventListener('click', async () => {
-      // ถ้าเปิด USE_GEOFENCE = true จึงเช็กตำแหน่งก่อน เพิ่มด้วยรหัส
-      if (USE_GEOFENCE) {
-        try {
-          const inZone = await checkGeofence();
-          if (!inZone) return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม.`);
-        } catch (e) {
-          return showGeoModal(`❌ ${e}`);
-        }
+      try {
+        const inZone = await checkGeofence();
+        if (!inZone) return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม.`);
+      } catch (e) {
+        return showGeoModal(`❌ ${e}`);
       }
       const id = document.getElementById('manualDeviceBorrowInput').value.trim();
       handleScanResult(id);
     });
     document.getElementById('manualAddReturnBtn').addEventListener('click', async () => {
-      // ถ้าเปิด USE_GEOFENCE = true จึงเช็กตำแหน่งก่อน เพิ่มด้วยรหัส
-      if (USE_GEOFENCE) {
-        try {
-          const inZone = await checkGeofence();
-          if (!inZone) return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม.`);
-        } catch (e) {
-          return showGeoModal(`❌ ${e}`);
-        }
+      try {
+        const inZone = await checkGeofence();
+        if (!inZone) return showGeoModal(`❌ กรุณาอยู่ภายใน ${GEOFENCE_RAD} ม.`);
+      } catch (e) {
+        return showGeoModal(`❌ ${e}`);
       }
       const id = document.getElementById('manualDeviceReturnInput').value.trim();
       handleScanResult(id);
@@ -263,30 +252,30 @@
 
     async function startScan(mode) {
       currentMode = mode;
-      const vid = mode === 'borrow' ? document.getElementById('video') : document.getElementById('videoReturn');
+      const vid = mode==='borrow' ? document.getElementById('video') : document.getElementById('videoReturn');
       const stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
       vid.srcObject = stream; vid.play(); vid.classList.remove('hidden');
       tick(vid);
     }
 
     function tick(video) {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      if (video.readyState===video.HAVE_ENOUGH_DATA) {
         const c = document.createElement('canvas');
         c.width = video.videoWidth; c.height = video.videoHeight;
         const ctx = c.getContext('2d');
-        ctx.drawImage(video, 0, 0);
-        const code = jsQR(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+        ctx.drawImage(video,0,0);
+        const code = jsQR(ctx.getImageData(0,0,c.width,c.height).data,c.width,c.height);
         if (code) handleScanResult(code.data.trim());
       }
-      if (video.srcObject) requestAnimationFrame(() => tick(video));
+      if (video.srcObject) requestAnimationFrame(()=>tick(video));
     }
 
     async function handleScanResult(deviceId) {
       const statusEl = document.getElementById(
-        currentMode === "borrow" ? "scanStatusBorrow" : "scanStatusReturn"
+        currentMode==="borrow" ? "scanStatusBorrow" : "scanStatusReturn"
       );
       if (!allowedDeviceIds.includes(deviceId)) {
-        statusEl.textContent = `❌ คุณไม่มีสิทธิ์${currentMode === "borrow" ? "ยืม" : "คืน"} (รหัส ${deviceId})`;
+        statusEl.textContent = `❌ คุณไม่มีสิทธิ์${currentMode==="borrow"?"ยืม":"คืน"} (รหัส ${deviceId})`;
         return;
       }
       const snap = await db.ref(`devices/${deviceId}`).get();
@@ -295,17 +284,17 @@
         return;
       }
       const dev = snap.val();
-      if (currentMode === "borrow" && dev.status !== "พร้อมใช้งาน") {
+      if (currentMode==="borrow" && dev.status!=="พร้อมใช้งาน") {
         statusEl.textContent = `⚠️ ${deviceId} (${dev.deviceName}) ไม่พร้อมยืม`;
         return;
       }
-      if (currentMode === "return") {
-        if (dev.status !== "กำลังใช้งาน" || dev.lastUserId !== userIdLine) {
+      if (currentMode==="return") {
+        if (dev.status!=="กำลังใช้งาน" || dev.lastUserId!==userIdLine) {
           statusEl.textContent = `❌ ไม่สามารถคืนได้`;
           return;
         }
       }
-      if (!basket.some(x => x.id === deviceId)) {
+      if (!basket.some(x=>x.id===deviceId)) {
         basket.push({ id: deviceId, name: dev.deviceName });
       }
       statusEl.textContent = `✅ เจออุปกรณ์: ${deviceId} (${dev.deviceName})`;
@@ -314,7 +303,7 @@
 
     function updateList() {
       const listEl = document.getElementById(
-        currentMode === 'borrow' ? 'basketBorrow' : 'basketReturn'
+        currentMode==='borrow' ? 'basketBorrow' : 'basketReturn'
       );
       listEl.innerHTML = basket.map(item => `
         <li class="flex justify-between items-center bg-white p-2 rounded-lg shadow">
@@ -323,12 +312,12 @@
         </li>
       `).join('');
       document.getElementById(
-        currentMode === 'borrow' ? 'btnConfirmBorrow' : 'btnConfirmReturn'
-      ).disabled = basket.length === 0;
+        currentMode==='borrow' ? 'btnConfirmBorrow' : 'btnConfirmReturn'
+      ).disabled = basket.length===0;
     }
 
     function removeFromBasket(id) {
-      basket = basket.filter(x => x.id !== id);
+      basket = basket.filter(x=>x.id!==id);
       updateList();
     }
 
@@ -379,8 +368,8 @@
     }
 
     async function submitAction(mode) {
-      const refName = mode === 'borrow' ? 'borrowRecords' : 'returnRecords';
-      const statusTxt = mode === 'borrow' ? 'ยืม' : 'คืน';
+      const refName = mode==='borrow' ? 'borrowRecords' : 'returnRecords';
+      const statusTxt = mode==='borrow' ? 'ยืม' : 'คืน';
       const now = new Date().toISOString();
       for (let item of basket) {
         const key = db.ref().child(refName).push().key;
@@ -394,9 +383,9 @@
           date: now
         });
         await db.ref(`devices/${item.id}`).update({
-          status: mode === 'borrow' ? 'กำลังใช้งาน' : 'พร้อมใช้งาน',
+          status: mode==='borrow' ? 'กำลังใช้งาน' : 'พร้อมใช้งาน',
           lastUser: `${userName} (${userPosition})`,
-          lastUserId: mode === 'borrow' ? userIdLine : ''
+          lastUserId: mode==='borrow' ? userIdLine : ''
         });
       }
     }

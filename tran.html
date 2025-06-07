@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>เบิกอุปกรณ์</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- LIFF + Firebase + jsQR -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+  <script src="firebase-config.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+  <!-- Custom Alert -->
+  <div id="customAlert"
+       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50">
+  </div>
+
+  <div class="max-w-md mx-auto p-6">
+    <div class="bg-white p-4 rounded-lg mb-4">
+      <h2 class="text-md font-bold">เบิกอุปกรณ์</h2>
+      <p class="pt-2">ชื่อผู้เบิก : <span id="borrowerName" class="font-medium">กำลังโหลด...</span></p>
+    </div>
+
+    <button id="scanBtn"
+            class="w-full mb-4 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-600 text-white py-3 px-4 rounded-full">
+      สแกน QR อุปกรณ์
+    </button>
+    <video id="video" playsinline class="w-full h-80 object-cover rounded-lg mb-4 hidden"></video>
+
+    <div class="space-y-4 mb-6">
+      <input id="deviceId" type="text" placeholder="รหัสอุปกรณ์" readonly
+             class="w-full border border-gray-300 rounded-lg p-2" />
+      <input id="deviceName" type="text" placeholder="ชื่ออุปกรณ์" readonly
+             class="w-full border border-gray-300 rounded-lg p-2" />
+    </div>
+
+    <button id="openConfirmBtn"
+            class="w-full mb-6 flex items-center justify-center gap-2 bg-green-800 hover:bg-green-600 text-white py-3 px-4 rounded-full">
+      เบิกอุปกรณ์
+    </button>
+    <p id="statusText" class="mt-4 text-blue-600 text-center font-medium"></p>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal"
+         class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg p-6 w-80">
+        <h3 class="text-lg font-semibold mb-4">ยืนยันการเบิกอุปกรณ์</h3>
+        <p class="mb-6">ต้องการเบิกอุปกรณ์นี้ใช่หรือไม่?</p>
+        <div class="flex justify-end gap-4">
+          <button id="cancelBtn"
+                  class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">ยกเลิก</button>
+          <button id="confirmBtn"
+                  class="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2">
+            ยืนยัน
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LIFF_ID = "2007335399-rmoYp9Md";
+    let userIdLine = "", borrowerName = "";
+
+    const db = firebase.database();
+    const devicesRef = db.ref('devices');
+    const borrowRef  = db.ref('borrowRecords');
+    const storage    = firebase.storage();
+
+    // custom alert
+    function showCustomAlert(msg) {
+      const a = document.getElementById('customAlert');
+      a.textContent = msg;
+      a.classList.remove('hidden');
+      setTimeout(() => a.classList.add('hidden'), 3000);
+    }
+
+    // LIFF init & load borrower
+    window.onload = async () => {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isInClient() && !liff.isLoggedIn()) {
+        liff.login(); return;
+      }
+      const profile = await liff.getProfile();
+      userIdLine = profile.userId;
+
+      const snap = await db.ref("employees")
+        .orderByChild("userIdLine").equalTo(userIdLine).get();
+      if (snap.exists()) {
+        borrowerName = Object.values(snap.val())[0].fullName;
+        document.getElementById('borrowerName').textContent = borrowerName;
+      } else {
+        showCustomAlert('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
+        setTimeout(()=>liff.isInClient()&&liff.closeWindow(),2000);
+      }
+    };
+
+    // QR scan
+    const canvas = document.createElement('canvas'),
+          ctx    = canvas.getContext('2d');
+    document.getElementById('scanBtn').onclick = startScan;
+    async function startScan() {
+      const video = document.getElementById('video');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      video.srcObject = stream;
+      video.play();
+      video.classList.remove('hidden');
+      requestAnimationFrame(()=>scanLoop(video));
+    }
+    function scanLoop(video) {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width = video.videoWidth;
+        canvas.height= video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const code = jsQR(
+          ctx.getImageData(0,0,canvas.width,canvas.height).data,
+          canvas.width, canvas.height
+        );
+        if (code) {
+          const id = code.data.trim();
+          devicesRef.child(id).get().then(snap=>{
+            if (!snap.exists()) {
+              showCustomAlert('ไม่พบอุปกรณ์นี้');
+            } else {
+              document.getElementById('deviceId').value   = id;
+              document.getElementById('deviceName').value = snap.val().deviceName || 'ไม่ทราบชื่อ';
+            }
+          });
+          video.srcObject.getTracks().forEach(t=>t.stop());
+          video.classList.add('hidden');
+        }
+      }
+      if (video.srcObject) requestAnimationFrame(()=>scanLoop(video));
+    }
+
+    // Modal control
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('openConfirmBtn').onclick = () => {
+      if (!document.getElementById('deviceId').value) {
+        showCustomAlert('กรุณาสแกนอุปกรณ์ก่อน');
+        return;
+      }
+      modal.classList.remove('hidden');
+    };
+    document.getElementById('cancelBtn').onclick =
+      () => modal.classList.add('hidden');
+
+    // Confirm & submit
+    document.getElementById('confirmBtn').onclick = async function() {
+      const btn = this;
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 inline-block" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        กำลังบันทึก...
+      `;
+      await submitBorrow();
+      btn.innerHTML = '✅ บันทึกสำเร็จ';
+      setTimeout(() => {
+        if (liff.isInClient()) liff.closeWindow();
+      }, 1000);
+    };
+
+    // Submit borrow to Firebase + update device + send LINE
+    async function submitBorrow() {
+      const id  = borrowRef.push().key;
+      const now = new Date().toISOString();
+      const dev = document.getElementById('deviceId').value;
+      const name= document.getElementById('deviceName').value;
+
+      await borrowRef.child(id).set({
+        id, date: now,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        borrowerName, userIdLine,
+        deviceId: dev, deviceName: name
+      });
+      await devicesRef.child(dev).update({
+        status: 'ยืม',
+        lastUser: borrowerName,
+        lastUserId: userIdLine
+      });
+      // ส่งข้อความยืนยันผ่าน LIFF
+      await liff.sendMessages([{
+        type: 'text',
+        text: `ยืมอุปกรณ์\nรหัส: ${dev}\nชื่อ: ${name}`
+      }]);
+    }
+  </script>
+</body>
+</html>

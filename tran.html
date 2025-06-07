@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>เบิกคลังสินค้า (LIFF Mode) พร้อมประวัติ</title>
+  <title>ระบบคลังสินค้า (LIFF Mode)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,17 +18,21 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
-  <!-- Alert box -->
+  <!-- Alert -->
   <div id="customAlert"
        class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50">
   </div>
 
-  <div class="max-w-lg mx-auto p-6">
+  <div class="max-w-lg mx-auto p-6 space-y-6">
     <!-- Tabs -->
     <div class="flex mb-4 border-b">
       <button id="tabReceiveBtn"
-              class="flex-1 py-2 text-center border-b-2 border-primary text-primary font-semibold">
-        รับเข้า/เบิก
+              class="flex-1 py-2 text-center border-b-2 border-primary font-semibold">
+        รับเข้า
+      </button>
+      <button id="tabIssueBtn"
+              class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
+        เบิก
       </button>
       <button id="tabHistoryBtn"
               class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
@@ -36,54 +40,62 @@
       </button>
     </div>
 
-    <!-- Receive Tab -->
+    <!-- รับเข้า Form -->
     <div id="tabReceive">
-      <div class="bg-white p-4 rounded-lg mb-4">
-        <h2 class="text-lg font-bold">ผู้เบิก : <span id="borrowerName">กำลังโหลด...</span></h2>
-      </div>
-
-      <!-- Search / Scan -->
+      <h2 class="text-lg font-semibold mb-2">รับเข้าสินค้า</h2>
       <datalist id="inventoryList"></datalist>
-      <input list="inventoryList" id="searchInventoryInput"
+      <input list="inventoryList" id="recvCodeInput"
              placeholder="พิมพ์รหัสหรือชื่อสินค้า"
-             class="w-full border-gray-300 border rounded-lg p-2 mb-2" />
-      <button id="scanBtn"
-              class="w-full mb-4 bg-slate-800 hover:bg-slate-600 text-white py-3 rounded-lg">
-        สแกน QR สินค้า
+             class="w-full border rounded p-2 mb-2" />
+      <button id="recvScanBtn"
+              class="w-full mb-4 bg-green-600 hover:bg-green-500 text-white py-2 rounded">
+        สแกน QR
       </button>
-      <video id="video" playsinline class="w-full h-48 object-cover rounded-lg mb-4 hidden"></video>
-
-      <!-- Inventory info & quantity -->
-      <div class="bg-white p-4 rounded-lg space-y-2 mb-4">
-        <input id="invCode"   type="text" placeholder="รหัสสินค้า" readonly class="w-full border p-2 rounded" />
-        <input id="invName"   type="text" placeholder="ชื่อสินค้า" readonly class="w-full border p-2 rounded" />
-        <p id="remainStockInfo" class="text-sm text-gray-600">คงเหลือ: –</p>
-        <p id="unitInfo"        class="text-sm text-gray-600">หน่วย: –</p>
-        <input id="withdrawQty" type="number" min="1" value="1" placeholder="จำนวนที่เบิก" class="w-full border p-2 rounded" />
-      </div>
-
-      <!-- Withdraw button -->
-      <button id="openConfirmBtn"
-              class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg">
-        เบิกสินค้า
+      <video id="recvVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+      <p id="recvStockInfo" class="text-sm text-gray-600 mb-2">คงเหลือ: –</p>
+      <input id="recvQty" type="number" min="1" value="1"
+             placeholder="จำนวนรับเข้า" class="w-full border rounded p-2 mb-4" />
+      <button id="recvSubmit"
+              class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded">
+        รับเข้า
       </button>
     </div>
 
-    <!-- History Tab -->
+    <!-- เบิก Form -->
+    <div id="tabIssue" class="hidden">
+      <h2 class="text-lg font-semibold mb-2">เบิกสินค้า</h2>
+      <datalist id="inventoryList2"></datalist>
+      <input list="inventoryList2" id="issCodeInput"
+             placeholder="พิมพ์รหัสหรือชื่อสินค้า"
+             class="w-full border rounded p-2 mb-2" />
+      <button id="issScanBtn"
+              class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+        สแกน QR
+      </button>
+      <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+      <p id="issStockInfo" class="text-sm text-gray-600 mb-2">คงเหลือ: –</p>
+      <input id="issQty" type="number" min="1" value="1"
+             placeholder="จำนวนเบิก" class="w-full border rounded p-2 mb-4" />
+      <button id="issSubmit"
+              class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+        เบิก
+      </button>
+    </div>
+
+    <!-- ประวัติ Table -->
     <div id="tabHistory" class="hidden">
-      <div class="overflow-x-auto bg-white rounded-lg shadow mb-4">
+      <div class="overflow-x-auto bg-white rounded shadow mb-2">
         <table class="min-w-full text-left">
-          <thead class="bg-secondary text-primary">
+          <thead class="bg-gray-200">
             <tr>
               <th class="px-4 py-2">วันที่</th>
-              <th class="px-4 py-2">ชื่อ</th>
+              <th class="px-4 py-2">ชื่อสินค้า</th>
               <th class="px-4 py-2">จำนวน (ชิ้น)</th>
             </tr>
           </thead>
           <tbody id="historyTable" class="divide-y"></tbody>
         </table>
       </div>
-      <!-- Pagination -->
       <div class="flex justify-between items-center">
         <button id="historyPrev"
                 class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
@@ -96,59 +108,56 @@
     </div>
   </div>
 
-  <!-- Confirmation Modal -->
-  <div id="confirmModal"
-       class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-80 space-y-4">
-      <h3 class="text-lg font-semibold">ยืนยันการเบิกสินค้า</h3>
-      <p>ต้องการเบิกสินค้านี้ใช่หรือไม่?</p>
-      <div class="flex justify-end gap-4">
-        <button id="cancelBtn"
-                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">ยกเลิก</button>
-        <button id="confirmBtn"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center gap-2">
-          ยืนยัน
-        </button>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // --- LIFF + Firebase refs ---
-    const LIFF_ID       = '2007335399-rmoYp9Md';
-    const stockRef      = db.ref('stock');
-    const issueRef      = db.ref('issueRecords');
-    const employeesRef  = db.ref('employees');
+    // Firebase refs
+    const stockRef     = db.ref('stock');
+    const receiveRef   = db.ref('receiveRecords');
+    const issueRef     = db.ref('issueRecords');
+    const employeesRef = db.ref('employees');
 
+    // LIFF init
+    const LIFF_ID = '2007335399-rmoYp9Md';
     let userIdLine = '', borrowerName = '';
 
-    // --- History state ---
-    let historyRecords = [];
+    // History state
+    let historyRecords = [], historyPage = 1;
     const historyPageSize = 15;
-    let historyPage = 1;
 
-    // --- Tab elements ---
-    const tabReceive = document.getElementById('tabReceive');
-    const tabHistory = document.getElementById('tabHistory');
-    document.getElementById('tabReceiveBtn').onclick = () => {
+    // Tabs
+    const tabReceiveBtn = document.getElementById('tabReceiveBtn');
+    const tabIssueBtn   = document.getElementById('tabIssueBtn');
+    const tabHistoryBtn = document.getElementById('tabHistoryBtn');
+    const tabReceive    = document.getElementById('tabReceive');
+    const tabIssue      = document.getElementById('tabIssue');
+    const tabHistory    = document.getElementById('tabHistory');
+
+    tabReceiveBtn.onclick = () => {
       tabReceive.classList.remove('hidden');
+      tabIssue.classList.add('hidden');
       tabHistory.classList.add('hidden');
-      document.getElementById('tabReceiveBtn').classList.add('border-primary','font-semibold');
-      document.getElementById('tabReceiveBtn').classList.remove('border-transparent');
-      document.getElementById('tabHistoryBtn').classList.remove('border-primary','font-semibold');
-      document.getElementById('tabHistoryBtn').classList.add('border-transparent');
+      tabReceiveBtn.classList.add('border-primary');
+      tabIssueBtn.classList.remove('border-primary');
+      tabHistoryBtn.classList.remove('border-primary');
     };
-    document.getElementById('tabHistoryBtn').onclick = () => {
+    tabIssueBtn.onclick = () => {
       tabReceive.classList.add('hidden');
+      tabIssue.classList.remove('hidden');
+      tabHistory.classList.add('hidden');
+      tabIssueBtn.classList.add('border-primary');
+      tabReceiveBtn.classList.remove('border-primary');
+      tabHistoryBtn.classList.remove('border-primary');
+    };
+    tabHistoryBtn.onclick = () => {
+      tabReceive.classList.add('hidden');
+      tabIssue.classList.add('hidden');
       tabHistory.classList.remove('hidden');
-      document.getElementById('tabHistoryBtn').classList.add('border-primary','font-semibold');
-      document.getElementById('tabHistoryBtn').classList.remove('border-transparent');
-      document.getElementById('tabReceiveBtn').classList.remove('border-primary','font-semibold');
-      document.getElementById('tabReceiveBtn').classList.add('border-transparent');
-      loadHistory();  // refresh when opening
+      tabHistoryBtn.classList.add('border-primary');
+      tabReceiveBtn.classList.remove('border-primary');
+      tabIssueBtn.classList.remove('border-primary');
+      loadHistory();
     };
 
-    // --- Alert helper ---
+    // Alert helper
     function showCustomAlert(msg) {
       const a = document.getElementById('customAlert');
       a.textContent = msg;
@@ -156,7 +165,7 @@
       setTimeout(()=>a.classList.add('hidden'),3000);
     }
 
-    // --- LIFF init & load user ---
+    // On load: LIFF init & data load
     window.onload = async () => {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isInClient() && !liff.isLoggedIn()) {
@@ -164,92 +173,112 @@
       }
       const profile = await liff.getProfile();
       userIdLine = profile.userId;
-      // Lookup employee
-      const empSnap = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
+      // find employee name
+      const empSnap = await employeesRef.orderByChild('userIdLine')
+                                        .equalTo(userIdLine).get();
       borrowerName = empSnap.exists()
         ? Object.values(empSnap.val())[0].fullName
         : 'ไม่ทราบชื่อ';
-      document.getElementById('borrowerName').textContent = borrowerName;
+      // inject borrowerName into receive form header
+      // (if you want to display it)
 
-      // Populate inventoryList
-      const dl = document.getElementById('inventoryList');
-      stockRef.once('value').then(snap => {
+      // populate datalists
+      const fillList = (ref, listId)=>{
+        const dl = document.getElementById(listId);
         dl.innerHTML = '';
-        snap.forEach(ch => {
-          const d = ch.val();
-          const opt = document.createElement('option');
-          opt.value = `${d.code} ‒ ${d.name}`;
-          dl.appendChild(opt);
+        ref.once('value').then(snap=>{
+          snap.forEach(ch=>{
+            const d = ch.val();
+            const opt = document.createElement('option');
+            opt.value = `${d.code} ‒ ${d.name}`;
+            dl.appendChild(opt);
+          });
+        });
+      };
+      fillList(stockRef, 'inventoryList');
+      fillList(stockRef, 'inventoryList2');
+    };
+
+    // Set inventory info fields
+    function bindInventory(inputId, infoId){
+      document.getElementById(inputId).addEventListener('input', ev=>{
+        const raw = ev.target.value;
+        const id  = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
+        if(!id) return;
+        stockRef.child(id).get().then(snap=>{
+          if(!snap.exists()) return showCustomAlert('ไม่พบสินค้า');
+          const d = snap.val();
+          document.getElementById(infoId).textContent =
+            `คงเหลือ: ${d.quantity||0}  หน่วย: ${d.unit||'-'}`;
         });
       });
-    };
+    }
+    bindInventory('recvCodeInput','recvStockInfo');
+    bindInventory('issCodeInput','issStockInfo');
 
-    // --- Set inventory info ---
-    function setInventory(id) {
-      stockRef.child(id).get().then(snap=>{
-        if (!snap.exists()) return showCustomAlert('ไม่พบสินค้า');
-        const d = snap.val();
-        document.getElementById('invCode').value          = d.code;
-        document.getElementById('invName').value          = d.name;
-        document.getElementById('remainStockInfo').textContent = `คงเหลือ: ${d.quantity||0}`;
-        document.getElementById('unitInfo').textContent       = `หน่วย: ${d.unit||'-'}`;
+    // QR scan
+    function setupScan(btnId, videoId, inputId){
+      const canvas = document.createElement('canvas');
+      const ctx    = canvas.getContext('2d');
+      document.getElementById(btnId).onclick = async ()=>{
+        const video = document.getElementById(videoId);
+        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+        video.srcObject = stream; video.play(); video.classList.remove('hidden');
+        requestAnimationFrame(function scan(){
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0);
+            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,
+                              canvas.width,canvas.height);
+            if(code){
+              document.getElementById(inputId).value = code.data.trim();
+              document.getElementById(inputId).dispatchEvent(new Event('input'));
+              video.srcObject.getTracks().forEach(t=>t.stop());
+              video.classList.add('hidden');
+              return;
+            }
+          }
+          requestAnimationFrame(scan);
+        });
+      };
+    }
+    setupScan('recvScanBtn','recvVideo','recvCodeInput');
+    setupScan('issScanBtn','issVideo','issCodeInput');
+
+    // Receive submit
+    document.getElementById('recvSubmit').onclick = async ()=>{
+      const code = document.getElementById('recvCodeInput').value.split(' ‒ ')[0];
+      const qty  = +document.getElementById('recvQty').value;
+      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if(qty<1) return showCustomAlert('กรุณากรอกจำนวนให้ถูกต้อง');
+      const recordId = receiveRef.push().key;
+      const now      = new Date().toISOString();
+      await receiveRef.child(recordId).set({
+        id:        recordId,
+        date:      now,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        borrower:  borrowerName,
+        userId:    userIdLine,
+        itemCode:  code,
+        itemName:  document.getElementById('recvCodeInput').value.split(' ‒ ')[1]||'',
+        quantity:  qty
       });
-    }
-    document.getElementById('searchInventoryInput').addEventListener('input', e=>{
-      const raw = e.target.value;
-      const id  = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
-      if (id) setInventory(id);
-    });
-
-    // --- QR scan ---
-    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
-    document.getElementById('scanBtn').onclick = async ()=>{
-      const video = document.getElementById('video');
-      const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-      video.srcObject=stream; video.play(); video.classList.remove('hidden');
-      requestAnimationFrame(()=>scanLoop(video));
+      await stockRef.child(code).child('quantity').transaction(c=>(c||0)+qty);
+      // clear form
+      document.getElementById('recvCodeInput').value = '';
+      document.getElementById('recvQty').value      = '1';
+      document.getElementById('recvStockInfo').textContent = 'คงเหลือ: –';
+      showCustomAlert('รับเข้าเรียบร้อย');
     };
-    function scanLoop(video) {
-      if(video.readyState===video.HAVE_ENOUGH_DATA){
-        canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-        ctx.drawImage(video,0,0);
-        const code=jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
-        if(code){
-          setInventory(code.data.trim());
-          video.srcObject.getTracks().forEach(t=>t.stop());
-          video.classList.add('hidden');
-        }
-      }
-      if(video.srcObject) requestAnimationFrame(()=>scanLoop(video));
-    }
 
-    // --- Confirmation modal ---
-    const confirmModal = document.getElementById('confirmModal');
-    document.getElementById('openConfirmBtn').onclick = ()=>{
-      const id  = document.getElementById('invCode').value;
-      const qty = +document.getElementById('withdrawQty').value;
-      if(!id) return showCustomAlert('กรุณาเลือกหรือสแกนสินค้า');
-      if(qty<1) return showCustomAlert('กรุณากรอกจำนวนที่เบิก');
-      confirmModal.classList.remove('hidden');
-    };
-    document.getElementById('cancelBtn').onclick = ()=>confirmModal.classList.add('hidden');
-
-    // --- Submit issue ---
-    document.getElementById('confirmBtn').onclick = async function(){
-      const btn = this; btn.disabled=true;
-      btn.innerHTML=`<svg class="animate-spin h-5 w-5 inline-block" viewBox="0 0 24 24">`
-                  +`<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>`
-                  +`<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg> กำลังบันทึก...`;
-      await submitIssue();
-      btn.innerHTML='✅ บันทึกสำเร็จ';
-      setTimeout(()=>confirmModal.classList.add('hidden'),800);
-    };
-    async function submitIssue(){
+    // Issue submit
+    document.getElementById('issSubmit').onclick = async ()=>{
+      const code = document.getElementById('issCodeInput').value.split(' ‒ ')[0];
+      const qty  = +document.getElementById('issQty').value;
+      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if(qty<1) return showCustomAlert('กรุณากรอกจำนวนให้ถูกต้อง');
       const recordId = issueRef.push().key;
       const now      = new Date().toISOString();
-      const code     = document.getElementById('invCode').value;
-      const name     = document.getElementById('invName').value;
-      const qty      = +document.getElementById('withdrawQty').value;
       await issueRef.child(recordId).set({
         id:        recordId,
         date:      now,
@@ -257,53 +286,63 @@
         borrower:  borrowerName,
         userId:    userIdLine,
         itemCode:  code,
-        itemName:  name,
+        itemName:  document.getElementById('issCodeInput').value.split(' ‒ ')[1]||'',
         quantity:  qty
       });
       await stockRef.child(code).child('quantity').transaction(c=>(c||0)-qty);
-    }
+      // clear form
+      document.getElementById('issCodeInput').value = '';
+      document.getElementById('issQty').value      = '1';
+      document.getElementById('issStockInfo').textContent = 'คงเหลือ: –';
+      showCustomAlert('เบิกรายการเรียบร้อย');
+    };
 
-    // --- Load & render history ---
+    // Load & render history
     async function loadHistory(){
-      const [rSnap,iSnap] = await Promise.all([ issueRef.once('value'), issueRef.once('value') ]);
-      // note: use issueRef for both or combine receiveRef if needed
+      const [rSnap,iSnap] = await Promise.all([
+        receiveRef.once('value'), issueRef.once('value')
+      ]);
       const recs = [];
+      rSnap.forEach(ch=>{
+        const d = ch.val();
+        if(d.userId===userIdLine) recs.push({...d,type:'receive'});
+      });
       iSnap.forEach(ch=>{
-        const d=ch.val();
-        recs.push(d);
+        const d = ch.val();
+        if(d.userId===userIdLine) recs.push({...d,type:'issue'});
       });
       recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
-      historyRecords=recs;
-      historyPage=1;
+      historyRecords = recs;
+      historyPage = 1;
       renderHistory();
     }
     function renderHistory(){
-      const start=(historyPage-1)*historyPageSize;
-      const page=recs=historyRecords.slice(start,start+historyPageSize);
-      const tbody=document.getElementById('historyTable');
-      tbody.innerHTML='';
+      const start = (historyPage-1)*historyPageSize;
+      const page  = historyRecords.slice(start,start+historyPageSize);
+      const tbody = document.getElementById('historyTable');
+      tbody.innerHTML = '';
       page.forEach(d=>{
-        const cls = 'bg-red-50';  // all issue here; adjust if both types
-        const tr=document.createElement('tr');
-        tr.className=cls;
-        tr.innerHTML=`
+        const cls = d.type==='receive' ? 'bg-green-50' : 'bg-red-50';
+        const tr = document.createElement('tr');
+        tr.className = cls;
+        tr.innerHTML = `
           <td class="px-4 py-2">${new Date(d.date).toLocaleDateString('th-TH')}</td>
           <td class="px-4 py-2">${d.itemName}</td>
           <td class="px-4 py-2">${d.quantity}</td>`;
         tbody.appendChild(tr);
       });
-      const totalPages = Math.ceil(historyRecords.length/historyPageSize)||1;
-      document.getElementById('historyPageInfo').textContent=
-        `หน้าที่ ${historyPage} จาก ${totalPages}`;
+      const total = Math.ceil(historyRecords.length/historyPageSize) || 1;
+      document.getElementById('historyPageInfo').textContent =
+        `หน้าที่ ${historyPage} จาก ${total}`;
       document.getElementById('historyPrev').disabled = historyPage===1;
-      document.getElementById('historyNext').disabled = historyPage===totalPages;
+      document.getElementById('historyNext').disabled = historyPage===total;
     }
-    document.getElementById('historyPrev').onclick=()=>{
-      if(historyPage>1){historyPage--;renderHistory();}
+    document.getElementById('historyPrev').onclick = ()=>{
+      if(historyPage>1){ historyPage--; renderHistory(); }
     };
-    document.getElementById('historyNext').onclick=()=>{
-      const tp=Math.ceil(historyRecords.length/historyPageSize);
-      if(historyPage<tp){historyPage++;renderHistory();}
+    document.getElementById('historyNext').onclick = ()=>{
+      const total = Math.ceil(historyRecords.length/historyPageSize);
+      if(historyPage<total){ historyPage++; renderHistory(); }
     };
   </script>
 </body>

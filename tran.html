@@ -26,13 +26,13 @@
   <div class="max-w-lg mx-auto p-6 space-y-6">
     <!-- Tabs -->
     <div class="flex mb-4 border-b">
-      <button id="tabReceiveBtn"
-              class="flex-1 py-2 text-center border-b-2 border-primary font-semibold">
-        รับเข้า
-      </button>
       <button id="tabIssueBtn"
-              class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
+              class="flex-1 py-2 text-center border-b-2 border-primary font-semibold">
         เบิก
+      </button>
+      <button id="tabReceiveBtn"
+              class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
+        รับเข้า
       </button>
       <button id="tabHistoryBtn"
               class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
@@ -40,10 +40,30 @@
       </button>
     </div>
 
-    <!-- รับเข้า Form -->
-    <div id="tabReceive">
-      <h2 class="text-lg font-semibold mb-2">รับเข้าสินค้า</h2>
+    <!-- เบิก Form -->
+    <div id="tabIssue">
+      <h2 class="text-lg font-semibold mb-2">เบิกสินค้า (<span id="issueActorName">–</span>)</h2>
       <datalist id="inventoryList"></datalist>
+      <input list="inventoryList" id="issCodeInput"
+             placeholder="พิมพ์รหัสหรือชื่อสินค้า"
+             class="w-full border rounded p-2 mb-2" />
+      <button id="issScanBtn"
+              class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+        สแกน QR
+      </button>
+      <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+      <p id="issStockInfo" class="text-sm text-gray-600 mb-2">คงเหลือ: –</p>
+      <input id="issQty" type="number" min="1" value="1"
+             placeholder="จำนวนเบิก" class="w-full border rounded p-2 mb-4" />
+      <button id="issSubmit"
+              class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+        เบิก
+      </button>
+    </div>
+
+    <!-- รับเข้า Form -->
+    <div id="tabReceive" class="hidden">
+      <h2 class="text-lg font-semibold mb-2">รับเข้าสินค้า (<span id="receiveActorName">–</span>)</h2>
       <input list="inventoryList" id="recvCodeInput"
              placeholder="พิมพ์รหัสหรือชื่อสินค้า"
              class="w-full border rounded p-2 mb-2" />
@@ -58,27 +78,6 @@
       <button id="recvSubmit"
               class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded">
         รับเข้า
-      </button>
-    </div>
-
-    <!-- เบิก Form -->
-    <div id="tabIssue" class="hidden">
-      <h2 class="text-lg font-semibold mb-2">เบิกสินค้า</h2>
-      <datalist id="inventoryList2"></datalist>
-      <input list="inventoryList2" id="issCodeInput"
-             placeholder="พิมพ์รหัสหรือชื่อสินค้า"
-             class="w-full border rounded p-2 mb-2" />
-      <button id="issScanBtn"
-              class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-        สแกน QR
-      </button>
-      <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
-      <p id="issStockInfo" class="text-sm text-gray-600 mb-2">คงเหลือ: –</p>
-      <input id="issQty" type="number" min="1" value="1"
-             placeholder="จำนวนเบิก" class="w-full border rounded p-2 mb-4" />
-      <button id="issSubmit"
-              class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-        เบิก
       </button>
     </div>
 
@@ -109,55 +108,51 @@
   </div>
 
   <script>
-    // Firebase refs
-    const stockRef     = db.ref('stock');
-    const receiveRef   = db.ref('receiveRecords');
-    const issueRef     = db.ref('issueRecords');
-    const employeesRef = db.ref('employees');
+    // LIFF + Firebase refs
+    const LIFF_ID       = '2007335399-rmoYp9Md';
+    const stockRef      = db.ref('stock');
+    const receiveRef    = db.ref('receiveRecords');
+    const issueRef      = db.ref('issueRecords');
+    const employeesRef  = db.ref('employees');
 
-    // LIFF init
-    const LIFF_ID = '2007335399-rmoYp9Md';
     let userIdLine = '', borrowerName = '';
-
-    // History state
     let historyRecords = [], historyPage = 1;
     const historyPageSize = 15;
 
     // Tabs
-    const tabReceiveBtn = document.getElementById('tabReceiveBtn');
     const tabIssueBtn   = document.getElementById('tabIssueBtn');
+    const tabReceiveBtn = document.getElementById('tabReceiveBtn');
     const tabHistoryBtn = document.getElementById('tabHistoryBtn');
-    const tabReceive    = document.getElementById('tabReceive');
     const tabIssue      = document.getElementById('tabIssue');
+    const tabReceive    = document.getElementById('tabReceive');
     const tabHistory    = document.getElementById('tabHistory');
 
+    tabIssueBtn.onclick = () => {
+      tabIssue.classList.remove('hidden');
+      tabReceive.classList.add('hidden');
+      tabHistory.classList.add('hidden');
+      tabIssueBtn.classList.add('border-primary','font-semibold');
+      tabReceiveBtn.classList.remove('border-primary','font-semibold');
+      tabHistoryBtn.classList.remove('border-primary','font-semibold');
+    };
     tabReceiveBtn.onclick = () => {
       tabReceive.classList.remove('hidden');
       tabIssue.classList.add('hidden');
       tabHistory.classList.add('hidden');
-      tabReceiveBtn.classList.add('border-primary');
-      tabIssueBtn.classList.remove('border-primary');
-      tabHistoryBtn.classList.remove('border-primary');
-    };
-    tabIssueBtn.onclick = () => {
-      tabReceive.classList.add('hidden');
-      tabIssue.classList.remove('hidden');
-      tabHistory.classList.add('hidden');
-      tabIssueBtn.classList.add('border-primary');
-      tabReceiveBtn.classList.remove('border-primary');
-      tabHistoryBtn.classList.remove('border-primary');
+      tabReceiveBtn.classList.add('border-primary','font-semibold');
+      tabIssueBtn.classList.remove('border-primary','font-semibold');
+      tabHistoryBtn.classList.remove('border-primary','font-semibold');
     };
     tabHistoryBtn.onclick = () => {
-      tabReceive.classList.add('hidden');
-      tabIssue.classList.add('hidden');
       tabHistory.classList.remove('hidden');
-      tabHistoryBtn.classList.add('border-primary');
-      tabReceiveBtn.classList.remove('border-primary');
-      tabIssueBtn.classList.remove('border-primary');
+      tabIssue.classList.add('hidden');
+      tabReceive.classList.add('hidden');
+      tabHistoryBtn.classList.add('border-primary','font-semibold');
+      tabIssueBtn.classList.remove('border-primary','font-semibold');
+      tabReceiveBtn.classList.remove('border-primary','font-semibold');
       loadHistory();
     };
 
-    // Alert helper
     function showCustomAlert(msg) {
       const a = document.getElementById('customAlert');
       a.textContent = msg;
@@ -165,7 +160,6 @@
       setTimeout(()=>a.classList.add('hidden'),3000);
     }
 
-    // On load: LIFF init & data load
     window.onload = async () => {
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isInClient() && !liff.isLoggedIn()) {
@@ -173,64 +167,61 @@
       }
       const profile = await liff.getProfile();
       userIdLine = profile.userId;
-      // find employee name
-      const empSnap = await employeesRef.orderByChild('userIdLine')
-                                        .equalTo(userIdLine).get();
+
+      // lookup employee
+      const empSnap = await employeesRef
+        .orderByChild('userIdLine').equalTo(userIdLine).get();
       borrowerName = empSnap.exists()
         ? Object.values(empSnap.val())[0].fullName
         : 'ไม่ทราบชื่อ';
-      // inject borrowerName into receive form header
-      // (if you want to display it)
 
-      // populate datalists
-      const fillList = (ref, listId)=>{
-        const dl = document.getElementById(listId);
+      document.getElementById('issueActorName').textContent   = borrowerName;
+      document.getElementById('receiveActorName').textContent = borrowerName;
+
+      // populate inventoryList
+      const dl = document.getElementById('inventoryList');
+      stockRef.once('value').then(snap => {
         dl.innerHTML = '';
-        ref.once('value').then(snap=>{
-          snap.forEach(ch=>{
-            const d = ch.val();
-            const opt = document.createElement('option');
-            opt.value = `${d.code} ‒ ${d.name}`;
-            dl.appendChild(opt);
-          });
+        snap.forEach(ch => {
+          const d = ch.val();
+          const opt = document.createElement('option');
+          opt.value = `${d.code} ‒ ${d.name}`;
+          dl.appendChild(opt);
         });
-      };
-      fillList(stockRef, 'inventoryList');
-      fillList(stockRef, 'inventoryList2');
+      });
     };
 
-    // Set inventory info fields
-    function bindInventory(inputId, infoId){
-      document.getElementById(inputId).addEventListener('input', ev=>{
+    // bind inventory info
+    function bindInventory(inputId, infoId) {
+      document.getElementById(inputId).addEventListener('input', ev => {
         const raw = ev.target.value;
         const id  = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
-        if(!id) return;
-        stockRef.child(id).get().then(snap=>{
-          if(!snap.exists()) return showCustomAlert('ไม่พบสินค้า');
+        if (!id) return;
+        stockRef.child(id).get().then(snap => {
+          if (!snap.exists()) return showCustomAlert('ไม่พบสินค้า');
           const d = snap.val();
           document.getElementById(infoId).textContent =
             `คงเหลือ: ${d.quantity||0}  หน่วย: ${d.unit||'-'}`;
         });
       });
     }
-    bindInventory('recvCodeInput','recvStockInfo');
     bindInventory('issCodeInput','issStockInfo');
+    bindInventory('recvCodeInput','recvStockInfo');
 
-    // QR scan
-    function setupScan(btnId, videoId, inputId){
+    // setup scan
+    function setupScan(btnId, videoId, inputId) {
       const canvas = document.createElement('canvas');
       const ctx    = canvas.getContext('2d');
-      document.getElementById(btnId).onclick = async ()=>{
+      document.getElementById(btnId).onclick = async () => {
         const video = document.getElementById(videoId);
-        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+        const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
         video.srcObject = stream; video.play(); video.classList.remove('hidden');
         requestAnimationFrame(function scan(){
-          if(video.readyState===video.HAVE_ENOUGH_DATA){
-            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+          if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             ctx.drawImage(video,0,0);
-            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,
-                              canvas.width,canvas.height);
-            if(code){
+            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width, canvas.height);
+            if (code) {
               document.getElementById(inputId).value = code.data.trim();
               document.getElementById(inputId).dispatchEvent(new Event('input'));
               video.srcObject.getTracks().forEach(t=>t.stop());
@@ -242,43 +233,18 @@
         });
       };
     }
-    setupScan('recvScanBtn','recvVideo','recvCodeInput');
     setupScan('issScanBtn','issVideo','issCodeInput');
+    setupScan('recvScanBtn','recvVideo','recvCodeInput');
 
-    // Receive submit
-    document.getElementById('recvSubmit').onclick = async ()=>{
-      const code = document.getElementById('recvCodeInput').value.split(' ‒ ')[0];
-      const qty  = +document.getElementById('recvQty').value;
-      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
-      if(qty<1) return showCustomAlert('กรุณากรอกจำนวนให้ถูกต้อง');
-      const recordId = receiveRef.push().key;
-      const now      = new Date().toISOString();
-      await receiveRef.child(recordId).set({
-        id:        recordId,
-        date:      now,
-        timestamp: firebase.database.ServerValue.TIMESTAMP,
-        borrower:  borrowerName,
-        userId:    userIdLine,
-        itemCode:  code,
-        itemName:  document.getElementById('recvCodeInput').value.split(' ‒ ')[1]||'',
-        quantity:  qty
-      });
-      await stockRef.child(code).child('quantity').transaction(c=>(c||0)+qty);
-      // clear form
-      document.getElementById('recvCodeInput').value = '';
-      document.getElementById('recvQty').value      = '1';
-      document.getElementById('recvStockInfo').textContent = 'คงเหลือ: –';
-      showCustomAlert('รับเข้าเรียบร้อย');
-    };
-
-    // Issue submit
+    // submit issue
     document.getElementById('issSubmit').onclick = async ()=>{
       const code = document.getElementById('issCodeInput').value.split(' ‒ ')[0];
       const qty  = +document.getElementById('issQty').value;
-      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
-      if(qty<1) return showCustomAlert('กรุณากรอกจำนวนให้ถูกต้อง');
+      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if (qty<1) return showCustomAlert('กรุณากรอกจำนวนให้ถูกต้อง');
       const recordId = issueRef.push().key;
       const now      = new Date().toISOString();
+      const name     = document.getElementById('issCodeInput').value.split(' ‒ ')[1]||'';
       await issueRef.child(recordId).set({
         id:        recordId,
         date:      now,
@@ -286,29 +252,60 @@
         borrower:  borrowerName,
         userId:    userIdLine,
         itemCode:  code,
-        itemName:  document.getElementById('issCodeInput').value.split(' ‒ ')[1]||'',
+        itemName:  name,
         quantity:  qty
       });
       await stockRef.child(code).child('quantity').transaction(c=>(c||0)-qty);
-      // clear form
+      // clear
       document.getElementById('issCodeInput').value = '';
       document.getElementById('issQty').value      = '1';
       document.getElementById('issStockInfo').textContent = 'คงเหลือ: –';
-      showCustomAlert('เบิกรายการเรียบร้อย');
+      // send LINE message
+      await liff.sendMessages([{ type:'text',
+        text:`เบิกสินค้า\nรหัส:${code}\nชื่อ:${name}\nจำนวน:${qty}\nผู้เบิก:${borrowerName}` }]);
+      showCustomAlert('เบิกเรียบร้อย');
     };
 
-    // Load & render history
+    // submit receive
+    document.getElementById('recvSubmit').onclick = async ()=>{
+      const code = document.getElementById('recvCodeInput').value.split(' ‒ ')[0];
+      const qty  = +document.getElementById('recvQty').value;
+      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if (qty<1) return showCustomAlert('กรุณากรอกจำนวนให้ถูกต้อง');
+      const recordId = receiveRef.push().key;
+      const now      = new Date().toISOString();
+      const name     = document.getElementById('recvCodeInput').value.split(' ‒ ')[1]||'';
+      await receiveRef.child(recordId).set({
+        id:        recordId,
+        date:      now,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        borrower:  borrowerName,
+        userId:    userIdLine,
+        itemCode:  code,
+        itemName:  name,
+        quantity:  qty
+      });
+      await stockRef.child(code).child('quantity').transaction(c=>(c||0)+qty);
+      // clear
+      document.getElementById('recvCodeInput').value = '';
+      document.getElementById('recvQty').value      = '1';
+      document.getElementById('recvStockInfo').textContent = 'คงเหลือ: –';
+      // send LINE message
+      await liff.sendMessages([{ type:'text',
+        text:`รับเข้าสินค้า\nรหัส:${code}\nชื่อ:${name}\nจำนวน:${qty}\nผู้รับเข้า:${borrowerName}` }]);
+      showCustomAlert('รับเข้าเรียบร้อย');
+    };
+
+    // load & render history
     async function loadHistory(){
-      const [rSnap,iSnap] = await Promise.all([
-        receiveRef.once('value'), issueRef.once('value')
-      ]);
+      const [rSnap,iSnap] = await Promise.all([ receiveRef.once('value'), issueRef.once('value') ]);
       const recs = [];
       rSnap.forEach(ch=>{
-        const d = ch.val();
+        const d=ch.val();
         if(d.userId===userIdLine) recs.push({...d,type:'receive'});
       });
       iSnap.forEach(ch=>{
-        const d = ch.val();
+        const d=ch.val();
         if(d.userId===userIdLine) recs.push({...d,type:'issue'});
       });
       recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -322,7 +319,7 @@
       const tbody = document.getElementById('historyTable');
       tbody.innerHTML = '';
       page.forEach(d=>{
-        const cls = d.type==='receive' ? 'bg-green-50' : 'bg-red-50';
+        const cls = d.type==='receive'? 'bg-green-50' : 'bg-red-50';
         const tr = document.createElement('tr');
         tr.className = cls;
         tr.innerHTML = `

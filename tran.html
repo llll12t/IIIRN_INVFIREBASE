@@ -412,6 +412,11 @@
       } catch (err) {
         console.error("LIFF initialization failed: ", err);
         showAlert('เกิดข้อผิดพลาดในการเริ่มต้น LIFF: ' + err.message);
+        // If LIFF fails, ensure LIFF functions are still callable for testing/debug
+        // and prevent app from crashing entirely.
+        if (liff && liff.isInClient() && liff.closeWindow) {
+             liff.closeWindow();
+        }
       }
     }
 
@@ -440,6 +445,9 @@
           const ctx = canvas.getContext('2d');
 
           function scan() {
+            if (!video.srcObject) { // Stop scanning if stream is no longer active
+                return;
+            }
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
               canvas.width = video.videoWidth;
               canvas.height = video.videoHeight;
@@ -967,8 +975,16 @@
     document.getElementById('tabReceiveBtn').onclick = () => activateTab('receive');
     document.getElementById('tabHistoryBtn').onclick = () => activateTab('history');
 
-    // Initial LIFF initialization and tab activation
-    liffInit().then(() => activateTab('issue'));
+    // Initial LIFF initialization and tab activation (Wrapped in async IIFE)
+    (async () => {
+      try {
+        await liffInit();
+        activateTab('issue'); // Activate issue tab after LIFF init is complete
+      } catch (e) {
+        console.error("Initialization failed: ", e);
+        showAlert("เกิดข้อผิดพลาดในการเริ่มต้นแอปพลิเคชัน: " + e.message, "error");
+      }
+    })();
   </script>
 </body>
 

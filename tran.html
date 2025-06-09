@@ -417,10 +417,12 @@
 
     /**
      * Sets up QR scanning functionality for a given button and video elements.
+     * When QR is scanned, it populates the manual input fields,
+     * allowing the user to specify quantity before adding.
      * @param {string} btnId - The ID of the button that triggers scanning.
      * @param {string} videoId - The ID of the <video> element for camera feed.
      * @param {string} containerId - The ID of the container for the video element.
-     * @param {'issue' | 'receive'} listKey - Determines which basket (issue/receive) to add to.
+     * @param {'issue' | 'receive'} listKey - Determines which manual input fields to populate.
      */
     function setupScan(btnId, videoId, containerId, listKey) {
       document.getElementById(btnId).onclick = async () => {
@@ -444,11 +446,26 @@
               ctx.drawImage(video, 0, 0);
               const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
               if (code) {
-                addToBasket(listKey, code.data.trim(), 1); // Add with default quantity 1 for QR
+                // Stop camera and hide video
                 stream.getTracks().forEach(t => t.stop());
                 videoContainer.classList.add('hidden');
-                showAlert('สแกนสำเร็จ!', 'success');
-                return;
+
+                const scannedCode = code.data.trim();
+                const itemSnap = await stockRef.child(scannedCode).get();
+                if (itemSnap.exists()) {
+                  const item = itemSnap.val();
+                  const manualCodeInput = document.getElementById(listKey === 'issue' ? 'manualCodeIssue' : 'manualCodeReceive');
+                  const manualQtyInput = document.getElementById(listKey === 'issue' ? 'manualQtyIssue' : 'manualQtyReceive');
+                  const stockDisplay = document.getElementById(listKey === 'issue' ? 'issueCurrentStockDisplay' : 'receiveCurrentStockDisplay');
+
+                  manualCodeInput.value = `${item.code} ‒ ${item.name}`;
+                  manualQtyInput.value = '1'; // Default quantity is 1
+                  updateStockDisplay(manualCodeInput.id, stockDisplay.id); // Update stock display for this item
+                  showAlert(`สแกนสินค้า "${item.name}" สำเร็จ! กรุณาระบุจำนวนแล้วกด 'เพิ่ม'`, 'success');
+                } else {
+                  showAlert(`ไม่พบสินค้าสำหรับ QR Code: ${scannedCode}`, 'error');
+                }
+                return; // Stop scanning process
               }
             }
             requestAnimationFrame(scan);
@@ -512,7 +529,7 @@
       const snap = await stockRef.child(code).get();
       if (!snap.exists()) {
         showAlert(`ไม่พบสินค้า "${code}"`);
-        return;
+        return false; // Indicate failure
       }
       const d = snap.val();
       const currentStock = d.quantity || 0; // Get current stock quantity
@@ -523,31 +540,32 @@
         // If item exists, update its quantity (increment for QR, set for manual)
         if (key === 'issue') {
           // For issue, check if new total quantity exceeds current stock
-          const potentialNewQty = existingItem.qty + qtyToAdd;
-          if (potentialNewQty > currentStock) {
-            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (ในตะกร้ามีแล้ว ${existingItem.qty})`, 'error');
-            return;
+          // This logic now supports setting quantity directly from input, not just incrementing.
+          if (qtyToAdd > currentStock) {
+            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
+            return false;
           }
-          existingItem.qty = potentialNewQty; // Increment for QR scan (+1)
-          showAlert(`เพิ่มสินค้า "${d.name}" ในตะกร้าอีก ${qtyToAdd} ชิ้น รวมเป็น ${existingItem.qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
+          existingItem.qty = qtyToAdd; // Set quantity to what was entered
+          showAlert(`อัปเดตจำนวนสินค้า "${d.name}" ในตะกร้าเป็น ${existingItem.qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
         } else { // Receive
-          existingItem.qty += qtyToAdd; // Always increment for receive via QR
-          showAlert(`เพิ่มสินค้า "${d.name}" ในตะกร้าอีก ${qtyToAdd} ชิ้น รวมเป็น ${existingItem.qty} ชิ้น`, 'success');
+          existingItem.qty = qtyToAdd; // Set quantity to what was entered
+          showAlert(`อัปเดตจำนวนสินค้า "${d.name}" ในตะกร้าเป็น ${existingItem.qty} ชิ้น`, 'success');
         }
       } else {
         // If new item, add to basket
         if (key === 'issue' && qtyToAdd > currentStock) {
           showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (คงเหลือ: ${currentStock})`, 'error');
-          return;
+          return false;
         }
         target.push({ code, name: d.name, qty: qtyToAdd });
         showAlert(`เพิ่มสินค้า "${d.name}" จำนวน ${qtyToAdd} ชิ้น เข้าตะกร้า (คงเหลือ: ${currentStock})`, 'success');
       }
       updateBasket(key === 'issue' ? 'basketIssue' : 'basketReceive', target, key === 'issue' ? 'submitIssueBtn' : 'submitReceiveBtn');
+      return true; // Indicate success
     }
 
     /**
-     * Handles adding items to the issue basket via manual input.
+     * Handles adding items to the issue basket via manual input (or after scan).
      */
     document.getElementById('addIssueBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeIssue').value.trim();
@@ -558,40 +576,18 @@
         return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง', 'error');
       }
 
-      const snap = await stockRef.child(code).get();
-      if (!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`, 'error');
-        return;
-      }
-      const d = snap.val();
-      const currentStock = d.quantity || 0;
-      const existingItem = basketIssue.find(x => x.code === code);
+      // Call addToBasket, which now handles validation and existing items
+      const success = await addToBasket('issue', code, qty);
 
-      if (qty > currentStock) {
-        showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
-        return;
+      if (success) {
+        document.getElementById('manualCodeIssue').value = ''; // Clear input
+        document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
+        updateStockDisplay('manualCodeIssue', 'issueCurrentStockDisplay'); // Clear stock display
       }
-
-      if (existingItem) {
-        // For manual input, if item exists, set its quantity to the new value
-        if (existingItem.qty !== qty) {
-          existingItem.qty = qty;
-          showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
-        } else {
-          showAlert(`สินค้า "${d.name}" จำนวน ${qty} ชิ้น อยู่ในตะกร้าแล้ว`, 'success');
-        }
-      } else {
-        basketIssue.push({ code, name: d.name, qty: qty }); // Add new item
-        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น เข้าตะกร้า (คงเหลือ: ${currentStock})`, 'success');
-      }
-      updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
-      document.getElementById('manualCodeIssue').value = ''; // Clear input
-      document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
-      updateStockDisplay('manualCodeIssue', 'issueCurrentStockDisplay'); // Clear stock display
     };
 
     /**
-     * Handles adding items to the receive basket via manual input.
+     * Handles adding items to the receive basket via manual input (or after scan).
      */
     document.getElementById('addReceiveBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeReceive').value.trim();
@@ -602,31 +598,14 @@
         return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง', 'error');
       }
 
-      const snap = await stockRef.child(code).get();
-      if (!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`, 'error');
-        return;
-      }
-      const d = snap.val();
-      // No stock check needed for receive
-      const existingItem = basketReceive.find(x => x.code === code);
+      // Call addToBasket, which now handles validation and existing items
+      const success = await addToBasket('receive', code, qty);
 
-      if (existingItem) {
-        // For manual input, if item exists, set its quantity to the new value
-        if (existingItem.qty !== qty) {
-          existingItem.qty = qty;
-          showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty} ชิ้น`, 'success');
-        } else {
-          showAlert(`สินค้า "${d.name}" จำนวน ${qty} ชิ้น อยู่ในตะกร้าแล้ว`, 'success');
-        }
-      } else {
-        basketReceive.push({ code, name: d.name, qty: qty }); // Add new item
-        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น เข้าตะกร้า`, 'success');
+      if (success) {
+        document.getElementById('manualCodeReceive').value = ''; // Clear input
+        document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
+        updateStockDisplay('manualCodeReceive', 'receiveCurrentStockDisplay'); // Clear stock display
       }
-      updateBasket('basketReceive', basketReceive, 'submitReceiveBtn');
-      document.getElementById('manualCodeReceive').value = ''; // Clear input
-      document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
-      updateStockDisplay('manualCodeReceive', 'receiveCurrentStockDisplay'); // Clear stock display
     };
 
     /**

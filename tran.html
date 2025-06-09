@@ -11,7 +11,7 @@
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script> <!-- Included from your original code -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
 
   <!-- IMPORTANT: Make sure your firebase-config.js is in the same directory and configured correctly -->
@@ -217,8 +217,6 @@
     // Example:
     // firebase.initializeApp(YOUR_FIREBASE_CONFIG);
     // const db = firebase.database();
-    // (if you need to access it globally, you might need to make 'db' a global variable,
-    // or pass it around, or simply ensure this script runs AFTER firebase-config.js)
     // For simplicity, I'm assuming 'db' is available globally from firebase-config.js.
     const stockRef      = db.ref('stock');
     const issueRef      = db.ref('issueRecords');
@@ -270,15 +268,14 @@
     function setButtonLoading(buttonId, isLoading, originalText) {
         const button = document.getElementById(buttonId);
 
-        // --- CORRECTED LOGIC FOR btnText AND btnSpinner IDs ---
+        // CORRECTED LOGIC FOR btnText AND btnSpinner IDs
         // Example: 'submitIssueBtn' -> 'issueBtn' (first letter lowercase)
         const baseId = buttonId.replace('submit', ''); // e.g., "IssueBtn" or "ReceiveBtn"
         const idPrefix = baseId.charAt(0).toLowerCase() + baseId.slice(1, -3); // "issue" or "receive" (removes "Btn" suffix)
 
         const btnText = document.getElementById(`${idPrefix}BtnText`);
         const btnSpinner = document.getElementById(`${idPrefix}BtnSpinner`);
-        // --- END CORRECTED LOGIC ---
-
+        
         // Safety check: Ensure elements exist before trying to modify them
         if (!btnText || !btnSpinner) {
             console.error(`Error: Could not find text or spinner element for buttonId: ${buttonId}. Check generated IDs: ${idPrefix}BtnText, ${idPrefix}BtnSpinner`);
@@ -585,20 +582,30 @@
           });
         }
 
-        // --- Prepare Text Message for LIFF ---
-        let messageText = "📤 *แจ้งเบิกสินค้าหลายรายการ*\n\n";
-        messageText += `ผู้เบิก: ${actorIssue}\n\n`;
-        messageText += "รายการเบิก:\n";
-        itemsToProcess.forEach(item => {
-            messageText += `- ${item.name} (รหัส: ${item.code}) จำนวน ${item.qty} ชิ้น\n`;
-        });
-        messageText += `\nวันที่/เวลา: ${new Date().toLocaleString('th-TH')}`;
-        // --- End Text Message Preparation ---
+        // --- Prepare Flex Message for LIFF ---
+        const flexBodyContents = [
+          {type:"text",text:"📤 เบิกหลายรายการ",weight:"bold",size:"lg",color:"#C0392B"},
+          {type:"text",text:`ผู้เบิก: ${actorIssue}`,size:"sm",margin:"md"},
+          {type:"separator",margin:"md"},
+          ...itemsToProcess.map(it=>({
+            type:"box",layout:"baseline",spacing:"sm",margin:"md",
+            contents:[
+              {type:"text",text:it.code,flex:1,size:"sm",color:"#555"},
+              {type:"text",text:`${it.name} × ${it.qty}`,flex:3,size:"sm",wrap:true}
+            ]
+          }))
+        ];
+        const flexMessageBubble = {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: flexBodyContents
+          }
+        };
+        // --- End Flex Message Preparation ---
 
-        // LIFF supports only one message type per sendMessages call.
-        // If you were to send both Flex and Text, you'd need two liff.sendMessages calls.
-        // Here we explicitly only send a text message.
-        await liff.sendMessages([{type: 'text', text: messageText}]);
+        await liff.sendMessages([{type:'flex',altText:'📤 แจ้งเบิกหลายรายการ',contents:flexMessageBubble}]);
         
         await notifyAdmins('issue', itemsToProcess); // Notify admins via GAS
         showAlert('เบิกสินค้าเรียบร้อยแล้ว', 'success');
@@ -638,17 +645,30 @@
           await stockRef.child(it.code).child('quantity').transaction(c=> (c || 0) + it.qty); // Ensure c is not null/undefined for increment
         }
 
-        // --- Prepare Text Message for LIFF ---
-        let messageText = "📥 *แจ้งรับเข้าสินค้าหลายรายการ*\n\n";
-        messageText += `ผู้รับเข้า: ${actorReceive}\n\n`;
-        messageText += "รายการรับเข้า:\n";
-        itemsToProcess.forEach(item => {
-            messageText += `- ${item.name} (รหัส: ${item.code}) จำนวน ${item.qty} ชิ้น\n`;
-        });
-        messageText += `\nวันที่/เวลา: ${new Date().toLocaleString('th-TH')}`;
-        // --- End Text Message Preparation ---
+        // --- Prepare Flex Message for LIFF ---
+        const flexBodyContents = [
+          {type:"text",text:"📥 รับเข้าสินค้าหลายรายการ",weight:"bold",size:"lg",color:"#27AE60"},
+          {type:"text",text:`ผู้รับเข้า: ${actorReceive}`,size:"sm",margin:"md"},
+          {type:"separator",margin:"md"},
+          ...itemsToProcess.map(it=>({
+            type:"box",layout:"baseline",spacing:"sm",margin:"md",
+            contents:[
+              {type:"text",text:it.code,flex:1,size:"sm",color:"#555"},
+              {type:"text",text:`${it.name} × ${it.qty}`,flex:3,size:"sm",wrap:true}
+            ]
+          }))
+        ];
+        const flexMessageBubble = {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: flexBodyContents
+          }
+        };
+        // --- End Flex Message Preparation ---
 
-        await liff.sendMessages([{type: 'text', text: messageText}]);
+        await liff.sendMessages([{type:'flex',altText:'📥 แจ้งรับเข้าสินค้าหลายรายการ',contents:flexMessageBubble}]);
         await notifyAdmins('receive', itemsToProcess); // Notify admins via GAS
         showAlert('รับเข้าสินค้าเรียบร้อยแล้ว', 'success');
         basketReceive = []; // Clear basket

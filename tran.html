@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>ระบบคลังสินค้า (LIFF Mode)</title>
+  <title>ระบบคลังสินค้า (เบิกหลายรายการ)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,383 +12,207 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <!-- jsQR for QR scanning -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-  <!-- Your Firebase config -->
+  <!-- Firebase Config -->
   <script src="firebase-config.js"></script>
+
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
   <!-- Alert -->
   <div id="customAlert"
-       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50"></div>
+       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50">
+  </div>
 
   <div class="max-w-lg mx-auto p-6 space-y-6">
-    <!-- Tabs -->
-    <div class="flex mb-4 border-b">
-      <button id="tabIssueBtn"
-              class="flex-1 py-2 text-center border-b-2 border-primary font-semibold">
-        เบิก
-      </button>
-      <button id="tabReceiveBtn"
-              class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
-        รับเข้า
-      </button>
-      <button id="tabHistoryBtn"
-              class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">
-        ประวัติ
-      </button>
+    <!-- Header -->
+    <div class="bg-white p-4 rounded-lg">
+      <div><span class="font-bold">ผู้เบิก:</span> <span id="actorName">–</span></div>
     </div>
 
-    <!-- เบิก Form -->
-    <div id="tabIssue">
-      <div class="bg-white p-4 rounded-lg mb-4">
-        <div class="mb-2"><span class="font-bold">ผู้เบิก:</span> <span id="issueActorName">–</span></div>
-        <div class="grid grid-cols-3 gap-4">
-          <div>
-            <span class="font-semibold">รหัสสินค้า</span>
-            <div id="issCodeDisplay" class="mt-1 text-lg">–</div>
-          </div>
-          <div>
-            <span class="font-semibold">ชื่อสินค้า</span>
-            <div id="issNameDisplay" class="mt-1 text-lg">–</div>
-          </div>
-          <div>
-            <span class="font-semibold">คงเหลือ</span>
-            <div id="issRemainDisplay" class="mt-1 text-lg">–</div>
-          </div>
-        </div>
-      </div>
-      <datalist id="inventoryList"></datalist>
-      <input list="inventoryList" id="issCodeInput"
+    <!-- สแกน QR เพิ่มรายการ -->
+    <button id="scanBtn"
+            class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+      สแกน QR เพิ่มรายการ
+    </button>
+    <video id="video" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+
+    <!-- datalist สำหรับ autocomplete -->
+    <datalist id="inventoryList"></datalist>
+
+    <!-- ตะกร้าเบิก -->
+    <ul id="basket" class="space-y-2 mb-4"></ul>
+
+    <!-- ช่องพิมพ์โค้ด + จำนวน + ปุ่มเพิ่มด้วยมือ -->
+    <div class="flex space-x-2 mb-4">
+      <input list="inventoryList" id="manualCode"
              placeholder="พิมพ์รหัสหรือชื่อสินค้า"
-             class="w-full border rounded p-2 mb-2" />
-      <button id="issScanBtn"
-              class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-        สแกน QR
-      </button>
-      <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
-      <input id="issQty" type="number" min="1" value="1"
-             placeholder="จำนวนเบิก" class="w-full border rounded p-2 mb-4" />
-      <button id="issSubmit"
-              class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-        เบิก
-      </button>
+             class="flex-1 border rounded p-2" />
+      <input type="number" id="manualQty" min="1" value="1"
+             class="w-20 border rounded p-2" />
+      <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่ม</button>
     </div>
 
-    <!-- รับเข้า Form -->
-    <div id="tabReceive" class="hidden">
-      <div class="bg-white p-4 rounded-lg mb-4">
-        <div class="mb-2"><span class="font-bold">ผู้รับเข้า:</span> <span id="receiveActorName">–</span></div>
-        <div class="grid grid-cols-3 gap-4">
-          <div>
-            <span class="font-semibold">รหัสสินค้า</span>
-            <div id="recvCodeDisplay" class="mt-1 text-lg">–</div>
-          </div>
-          <div>
-            <span class="font-semibold">ชื่อสินค้า</span>
-            <div id="recvNameDisplay" class="mt-1 text-lg">–</div>
-          </div>
-          <div>
-            <span class="font-semibold">คงเหลือ</span>
-            <div id="recvRemainDisplay" class="mt-1 text-lg">–</div>
-          </div>
-        </div>
-      </div>
-      <datalist id="inventoryList2"></datalist>
-      <input list="inventoryList2" id="recvCodeInput"
-             placeholder="พิมพ์รหัสหรือชื่อสินค้า"
-             class="w-full border rounded p-2 mb-2" />
-      <button id="recvScanBtn"
-              class="w-full mb-4 bg-green-600 hover:bg-green-500 text-white py-2 rounded">
-        สแกน QR
-      </button>
-      <video id="recvVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
-      <input id="recvQty" type="number" min="1" value="1"
-             placeholder="จำนวนรับเข้า" class="w-full border rounded p-2 mb-4" />
-      <button id="recvSubmit"
-              class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded">
-        รับเข้า
-      </button>
-    </div>
-
-    <!-- ประวัติ Table -->
-    <div id="tabHistory" class="hidden">
-      <div class="overflow-x-auto bg-white rounded shadow mb-2">
-        <table class="min-w-full text-left">
-          <thead class="bg-gray-200">
-            <tr>
-              <th class="px-4 py-2">วันที่</th>
-              <th class="px-4 py-2">ชื่อสินค้า</th>
-              <th class="px-4 py-2">จำนวน (ชิ้น)</th>
-            </tr>
-          </thead>
-          <tbody id="historyTable" class="divide-y"></tbody>
-        </table>
-      </div>
-      <div class="flex justify-between items-center">
-        <button id="historyPrev"
-                class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-                disabled>ก่อนหน้า</button>
-        <span id="historyPageInfo" class="text-sm text-gray-600">หน้าที่ 1 จาก 1</span>
-        <button id="historyNext"
-                class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-                disabled>ถัดไป</button>
-      </div>
-    </div>
+    <!-- ปุ่มยืนยันเบิกหลายรายการ -->
+    <button id="submitBtn"
+            class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded disabled:opacity-50"
+            disabled>ยืนยันเบิก (หลายรายการ)</button>
   </div>
 
   <script>
-    // === Configuration ===
-    const LIFF_ID = '2007335399-rmoYp9Md';
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
-
-    // === Firebase refs ===
+    const LIFF_ID      = '2007335399-rmoYp9Md';
+    const GAS_URL      = 'https://script.google.com/macros/s/XXXXXXXX/exec';
+    const db           = firebase.database();
     const stockRef     = db.ref('stock');
-    const receiveRef   = db.ref('receiveRecords');
     const issueRef     = db.ref('issueRecords');
     const employeesRef = db.ref('employees');
 
-    let userIdLine = '', borrowerName = '';
-    let historyRecords = [], historyPage = 1;
-    const historyPageSize = 15;
+    let userIdLine = '', actorName = '';
+    let basket = [];
 
-    // === Tab handling ===
-    const tabIssueBtn   = document.getElementById('tabIssueBtn');
-    const tabReceiveBtn = document.getElementById('tabReceiveBtn');
-    const tabHistoryBtn = document.getElementById('tabHistoryBtn');
-    const tabIssue      = document.getElementById('tabIssue');
-    const tabReceive    = document.getElementById('tabReceive');
-    const tabHistory    = document.getElementById('tabHistory');
-    function activateTab(issue, receive, history) {
-      tabIssue.   classList.toggle('hidden', !issue);
-      tabReceive.classList.toggle('hidden', !receive);
-      tabHistory.classList.toggle('hidden', !history);
-      tabIssueBtn.   classList.toggle('border-primary', issue);
-      tabReceiveBtn.classList.toggle('border-primary', receive);
-      tabHistoryBtn.classList.toggle('border-primary', history);
-    }
-    tabIssueBtn. onclick = () => activateTab(true,false,false);
-    tabReceiveBtn.onclick = () => activateTab(false,true,false);
-    tabHistoryBtn.onclick = () => { activateTab(false,false,true); loadHistory(); };
-
-    function showCustomAlert(msg) {
+    // UI Helpers
+    function alertMsg(msg){
       const a = document.getElementById('customAlert');
-      a.textContent = msg;
-      a.classList.remove('hidden');
-      setTimeout(()=>a.classList.add('hidden'),3000);
+      a.textContent = msg; a.classList.remove('hidden');
+      setTimeout(()=>a.classList.add('hidden'),2000);
+    }
+    function updateBasketUI(){
+      const ul = document.getElementById('basket');
+      ul.innerHTML = basket.map(it=>`
+        <li class="flex justify-between items-center bg-white p-2 rounded shadow">
+          <span>${it.code} – ${it.name} × ${it.qty}</span>
+          <button onclick="removeItem('${it.code}')" class="text-red-500 font-bold">ลบ</button>
+        </li>
+      `).join('');
+      document.getElementById('submitBtn').disabled = !basket.length;
+    }
+    function removeItem(code){
+      basket = basket.filter(x=>x.code!==code);
+      updateBasketUI();
     }
 
-    // === LIFF init & load ===
-    window.onload = async () => {
-      await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
-      if (!liff.isInClient() && !liff.isLoggedIn()) {
-        await liff.login({ scope: 'profile openid chat_message.write' });
-        return;
-      }
-      const profile = await liff.getProfile();
-      userIdLine = profile.userId;
-
-      // ดึงชื่อผู้ใช้จาก employees
-      const empSnap = await employeesRef.orderByChild('userIdLine')
-                                        .equalTo(userIdLine).get();
-      borrowerName = empSnap.exists()
-        ? Object.values(empSnap.val())[0].fullName
-        : 'ไม่ทราบชื่อ';
-      document.getElementById('issueActorName').textContent   = borrowerName;
-      document.getElementById('receiveActorName').textContent = borrowerName;
-
-      // เติม datalist สินค้า
-      stockRef.once('value').then(snap=>{
-        snap.forEach(ch=>{
-          const d = ch.val();
-          ['inventoryList','inventoryList2'].forEach(listId=>{
-            const dl = document.getElementById(listId);
-            const opt = document.createElement('option');
-            opt.value = `${d.code} ‒ ${d.name}`;
-            dl.appendChild(opt);
-          });
-        });
+    // LIFF Init
+    window.onload = async ()=>{
+      await liff.init({liffId:LIFF_ID});
+      if(!liff.isLoggedIn()) await liff.login();
+      const p = await liff.getProfile();
+      userIdLine = p.userId;
+      // ดึงชื่อพนักงาน
+      const snap = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
+      actorName = snap.exists()? Object.values(snap.val())[0].fullName : 'ไม่ทราบชื่อ';
+      document.getElementById('actorName').textContent = actorName;
+      // เติม datalist
+      const dl = document.getElementById('inventoryList');
+      const s = await stockRef.once('value');
+      s.forEach(ch=>{
+        const d = ch.val();
+        dl.insertAdjacentHTML('beforeend', `<option value="${d.code} ‒ ${d.name}">`);
       });
-
-      activateTab(true,false,false);
     };
 
-    // === Bind inventory display ===
-    function bindInventory(inputId, codeDisp, nameDisp, remainDisp) {
-      document.getElementById(inputId).addEventListener('input', async ev => {
-        const raw = ev.target.value;
-        const code = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
-        if (!code) return;
-        const snap = await stockRef.child(code).get();
-        if (!snap.exists()) { showCustomAlert('ไม่พบสินค้า'); return; }
-        const d = snap.val();
-        document.getElementById(codeDisp).textContent   = d.code;
-        document.getElementById(nameDisp).textContent   = d.name;
-        document.getElementById(remainDisp).textContent = d.quantity;
-      });
-    }
-    bindInventory('issCodeInput','issCodeDisplay','issNameDisplay','issRemainDisplay');
-    bindInventory('recvCodeInput','recvCodeDisplay','recvNameDisplay','recvRemainDisplay');
-
-    // === QR scan setup ===
-    function setupScan(btnId, videoId, inputId) {
-      const canvas = document.createElement('canvas');
-      const ctx    = canvas.getContext('2d');
-      document.getElementById(btnId).onclick = async () => {
-        const video = document.getElementById(videoId);
-        const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
+    // สแกน QR
+    document.getElementById('scanBtn').onclick = async ()=>{
+      const video = document.getElementById('video');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
         video.srcObject = stream; video.play(); video.classList.remove('hidden');
-        (function scan(){
-          if (video.readyState===video.HAVE_ENOUGH_DATA) {
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+        (function tick(){
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
             ctx.drawImage(video,0,0);
             const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
-            if (code) {
-              document.getElementById(inputId).value = code.data.trim();
-              document.getElementById(inputId).dispatchEvent(new Event('input'));
-              video.srcObject.getTracks().forEach(t=>t.stop());
+            if(code){
+              handleScan(code.data.trim());
+              stream.getTracks().forEach(t=>t.stop());
               video.classList.add('hidden');
               return;
             }
           }
-          requestAnimationFrame(scan);
+          requestAnimationFrame(tick);
         })();
-      };
-    }
-    setupScan('issScanBtn','issVideo','issCodeInput');
-    setupScan('recvScanBtn','recvVideo','recvCodeInput');
+      } catch(e){
+        alertMsg('ไม่สามารถเข้าถึงกล้องได้');
+      }
+    };
 
-    // === Fetch admin IDs ===
-    async function getAdminIds() {
+    async function handleScan(code){
+      const snap = await stockRef.child(code).get();
+      if(!snap.exists()) return alertMsg(`ไม่พบสินค้า ${code}`);
+      const d = snap.val();
+      // ถ้ายังไม่มีใน basket ให้เพิ่ม
+      if(!basket.find(x=>x.code===code)){
+        basket.push({ code, name:d.name, qty:1 });
+        updateBasketUI();
+      }
+    }
+
+    // เพิ่มด้วยมือ
+    document.getElementById('addBtn').onclick = async ()=>{
+      const raw = document.getElementById('manualCode').value.trim();
+      if(!raw) return;
+      const code = raw.split(' ‒ ')[0];
+      const qty  = +document.getElementById('manualQty').value;
+      if(qty<1) return alertMsg('จำนวนไม่ถูกต้อง');
+      const snap = await stockRef.child(code).get();
+      if(!snap.exists()) return alertMsg(`ไม่พบสินค้า ${code}`);
+      const d = snap.val();
+      if(!basket.find(x=>x.code===code)){
+        basket.push({ code, name:d.name, qty });
+        updateBasketUI();
+      }
+    };
+
+    // Notify Admin via GAS
+    async function getAdminIds(){
       const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
       const ids = [];
       snap.forEach(ch=>{
-        const u = ch.val().userIdLine;
-        if (u) ids.push(u);
+        const u=ch.val().userIdLine;
+        if(u) ids.push(u);
       });
       return ids;
     }
-
-    // === Notify admins via GAS (no-cors) ===
-    async function notifyAdmins(action, code, name, qty, user) {
-      const adminIds = await getAdminIds();
-      if (!adminIds.length) return;
-      fetch(GAS_URL, {
-        method: 'POST',
-        mode:   'no-cors',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({
-          action,
-          code,
-          name,
-          qty,
-          user,
-          userId: userIdLine,
-          date: new Date().toISOString(),
-          toList: adminIds
+    async function notifyAdmins(action, items){
+      const admins = await getAdminIds();
+      if(!admins.length) return;
+      fetch(GAS_URL,{
+        method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          action, user:actorName, userId:userIdLine,
+          date:new Date().toISOString(), items, toList:admins
         })
       });
     }
 
-    // === เบิก submit ===
-    document.getElementById('issSubmit').onclick = async () => {
-      const code = document.getElementById('issCodeDisplay').textContent;
-      const qty  = +document.getElementById('issQty').value;
-      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
-      const snap = await stockRef.child(code).get();
-      const avail = snap.val().quantity||0;
-      if (avail <= 0) return showCustomAlert('สินค้าหมด');
-      if (qty > avail)  return showCustomAlert('เบิกเกินจำนวนคงเหลือ');
-      const recordId = issueRef.push().key;
-      const now      = new Date().toISOString();
-      const name     = document.getElementById('issNameDisplay').textContent;
-      await issueRef.child(recordId).set({
-        id: recordId, date: now,
-        timestamp: firebase.database.ServerValue.TIMESTAMP,
-        borrower: borrowerName,
-        userId: userIdLine,
-        itemCode: code,
-        itemName: name,
-        quantity: qty
-      });
-      await stockRef.child(code).child('quantity').transaction(c => c - qty);
-      await liff.sendMessages([{
-        type: 'text',
-        text: `📤 เบิกสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้เบิก: ${borrowerName}`
-      }]);
-      await notifyAdmins('issue', code, name, qty, borrowerName);
-      document.getElementById('issCodeInput').value = '';
-      document.getElementById('issQty').value       = '1';
-      showCustomAlert('เบิกเรียบร้อย');
-    };
-
-    // === รับเข้า submit ===
-    document.getElementById('recvSubmit').onclick = async () => {
-      const code = document.getElementById('recvCodeDisplay').textContent;
-      const qty  = +document.getElementById('recvQty').value;
-      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
-      if (qty < 1) return showCustomAlert('จำนวนไม่ถูกต้อง');
-      const recordId = receiveRef.push().key;
-      const now      = new Date().toISOString();
-      const name     = document.getElementById('recvNameDisplay').textContent;
-      await receiveRef.child(recordId).set({
-        id: recordId, date: now,
-        timestamp: firebase.database.ServerValue.TIMESTAMP,
-        borrower: borrowerName,
-        userId: userIdLine,
-        itemCode: code,
-        itemName: name,
-        quantity: qty
-      });
-      await stockRef.child(code).child('quantity').transaction(c => c + qty);
-      await liff.sendMessages([{
-        type: 'text',
-        text: `📥 รับเข้าสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้รับเข้า: ${borrowerName}`
-      }]);
-      await notifyAdmins('receive', code, name, qty, borrowerName);
-      document.getElementById('recvCodeInput').value = '';
-      document.getElementById('recvQty').value       = '1';
-      showCustomAlert('รับเข้าเรียบร้อย');
-    };
-
-    // === Load & render history ===
-    async function loadHistory() {
-      const [rSnap,iSnap] = await Promise.all([
-        receiveRef.once('value'),
-        issueRef.once('value')
-      ]);
-      const recs = [];
-      rSnap.forEach(ch => { const d = ch.val(); if (d.userId === userIdLine) recs.push({...d,type:'receive'}); });
-      iSnap.forEach(ch => { const d = ch.val(); if (d.userId === userIdLine) recs.push({...d,type:'issue'}); });
-      recs.sort((a,b) => new Date(b.date) - new Date(a.date));
-      historyRecords = recs; historyPage = 1; renderHistory();
-    }
-    function renderHistory() {
-      const start = (historyPage - 1) * historyPageSize;
-      const page  = historyRecords.slice(start, start + historyPageSize);
-      const tbody = document.getElementById('historyTable');
-      tbody.innerHTML = '';
-      page.forEach(d => {
-        const cls = d.type === 'receive' ? 'bg-green-50' : 'bg-red-50';
-        const tr  = document.createElement('tr');
-        tr.className = cls;
-        tr.innerHTML = `
-          <td class="px-4 py-2">${new Date(d.date).toLocaleDateString('th-TH')} ${new Date(d.date).toLocaleTimeString('th-TH')}</td>
-          <td class="px-4 py-2">${d.itemName}</td>
-          <td class="px-4 py-2">${d.quantity}</td>`;
-        tbody.appendChild(tr);
-      });
-      const total = Math.max(1, Math.ceil(historyRecords.length / historyPageSize));
-      document.getElementById('historyPageInfo').textContent = `หน้าที่ ${historyPage} จาก ${total}`;
-      document.getElementById('historyPrev').disabled = historyPage === 1;
-      document.getElementById('historyNext').disabled = historyPage === total;
-    }
-    document.getElementById('historyPrev').onclick = () => {
-      if (historyPage > 1) { historyPage--; renderHistory(); }
-    };
-    document.getElementById('historyNext').onclick = () => {
-      const t = Math.ceil(historyRecords.length / historyPageSize);
-      if (historyPage < t) { historyPage++; renderHistory(); }
+    // ส่งเบิกหลายรายการ
+    document.getElementById('submitBtn').onclick = async ()=>{
+      if(!basket.length) return;
+      const now = new Date().toISOString();
+      // บันทึกแต่ละรายการ
+      for(const it of basket){
+        const key = issueRef.push().key;
+        await issueRef.child(key).set({
+          id:key, date:now,
+          timestamp: firebase.database.ServerValue.TIMESTAMP,
+          borrower: actorName,
+          userId: userIdLine,
+          itemCode: it.code,
+          itemName: it.name,
+          quantity: it.qty
+        });
+        // ลด stock
+        await stockRef.child(it.code).child('quantity').transaction(c=>c-it.qty);
+      }
+      // ส่ง LIFF message สรุป
+      const txt = ['📤 เบิกหลายรายการ', ...basket.map(it=>`${it.code}×${it.qty}`)].join('\n');
+      await liff.sendMessages([{type:'text',text:txt}]);
+      // แจ้ง Admin
+      await notifyAdmins('issue-multi', basket);
+      alertMsg('เบิกเรียบร้อย');
+      basket=[]; updateBasketUI();
     };
   </script>
 </body>

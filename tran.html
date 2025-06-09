@@ -278,6 +278,7 @@
       if (!adminIds.length) return;
       await fetch(GAS_URL, {
         method:'POST',
+        mode:   'no-cors',
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({ action, code, name, qty, user, userId: userIdLine, toList: adminIds })
       });

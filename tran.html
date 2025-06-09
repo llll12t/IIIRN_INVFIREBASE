@@ -12,7 +12,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-  <!-- jsQR for QR scanning -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <!-- Your Firebase config -->
   <script src="firebase-config.js"></script>
@@ -44,29 +43,56 @@
     <div id="tabIssue">
       <div class="bg-white p-4 rounded-lg mb-4">
         <div class="mb-2"><span class="font-bold">ผู้เบิก:</span> <span id="issueActorName">–</span></div>
-      </div>
-
-      <!-- multi-item container -->
-      <datalist id="inventoryList"></datalist>
-      <div id="issueItemsContainer" class="space-y-2">
-        <div class="item-row flex space-x-2">
-          <input list="inventoryList" placeholder="รหัสหรือชื่อสินค้า" class="flex-2 border rounded p-2 code-input" />
-          <input type="number" min="1" value="1" placeholder="จำนวน" class="w-20 border rounded p-2 qty-input" />
-          <button type="button" class="remove-item px-2 text-white bg-red-500 rounded">–</button>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <span class="font-semibold">รหัสสินค้า</span>
+            <div id="issCodeDisplay" class="mt-1 text-lg">–</div>
+          </div>
+          <div>
+            <span class="font-semibold">ชื่อสินค้า</span>
+            <div id="issNameDisplay" class="mt-1 text-lg">–</div>
+          </div>
+          <div>
+            <span class="font-semibold">คงเหลือ</span>
+            <div id="issRemainDisplay" class="mt-1 text-lg">–</div>
+          </div>
         </div>
       </div>
-      <button id="addIssueItem" class="text-sm text-primary hover:underline">+ เพิ่มรายการ</button>
-
+      <datalist id="inventoryList"></datalist>
+      <input list="inventoryList" id="issCodeInput"
+             placeholder="พิมพ์รหัสหรือชื่อสินค้า"
+             class="w-full border rounded p-2 mb-2" />
+      <button id="issScanBtn"
+              class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+        สแกน QR
+      </button>
+      <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+      <input id="issQty" type="number" min="1" value="1"
+             placeholder="จำนวนเบิก" class="w-full border rounded p-2 mb-4" />
       <button id="issSubmit"
-              class="w-full mt-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-        เบิก (ส่งหลายรายการ)
+              class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded">
+        เบิก
       </button>
     </div>
 
-    <!-- รับเข้า Form (single) -->
+    <!-- รับเข้า Form -->
     <div id="tabReceive" class="hidden">
       <div class="bg-white p-4 rounded-lg mb-4">
         <div class="mb-2"><span class="font-bold">ผู้รับเข้า:</span> <span id="receiveActorName">–</span></div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <span class="font-semibold">รหัสสินค้า</span>
+            <div id="recvCodeDisplay" class="mt-1 text-lg">–</div>
+          </div>
+          <div>
+            <span class="font-semibold">ชื่อสินค้า</span>
+            <div id="recvNameDisplay" class="mt-1 text-lg">–</div>
+          </div>
+          <div>
+            <span class="font-semibold">คงเหลือ</span>
+            <div id="recvRemainDisplay" class="mt-1 text-lg">–</div>
+          </div>
+        </div>
       </div>
       <datalist id="inventoryList2"></datalist>
       <input list="inventoryList2" id="recvCodeInput"
@@ -91,9 +117,9 @@
         <table class="min-w-full text-left">
           <thead class="bg-gray-200">
             <tr>
-              <th class="px-4 py-2">วันที่/เวลา</th>
+              <th class="px-4 py-2">วันที่</th>
               <th class="px-4 py-2">ชื่อสินค้า</th>
-              <th class="px-4 py-2">จำนวน</th>
+              <th class="px-4 py-2">จำนวน (ชิ้น)</th>
             </tr>
           </thead>
           <tbody id="historyTable" class="divide-y"></tbody>
@@ -112,11 +138,11 @@
   </div>
 
   <script>
-    // === Config ===
+    // === Configuration ===
     const LIFF_ID = '2007335399-rmoYp9Md';
-    const GAS_URL = 'https://script.google.com/macros/s/XXX/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
 
-    // Firebase refs
+    // === Firebase refs ===
     const stockRef     = db.ref('stock');
     const receiveRef   = db.ref('receiveRecords');
     const issueRef     = db.ref('issueRecords');
@@ -126,53 +152,59 @@
     let historyRecords = [], historyPage = 1;
     const historyPageSize = 15;
 
-    // Tab handling
+    // === Tab handling ===
     const tabIssueBtn   = document.getElementById('tabIssueBtn');
     const tabReceiveBtn = document.getElementById('tabReceiveBtn');
     const tabHistoryBtn = document.getElementById('tabHistoryBtn');
     const tabIssue      = document.getElementById('tabIssue');
     const tabReceive    = document.getElementById('tabReceive');
     const tabHistory    = document.getElementById('tabHistory');
-    function activateTab(i,r,h){
-      tabIssue   .classList.toggle('hidden',!i);
-      tabReceive .classList.toggle('hidden',!r);
-      tabHistory .classList.toggle('hidden',!h);
-      tabIssueBtn   .classList.toggle('border-primary',i);
-      tabReceiveBtn .classList.toggle('border-primary',r);
-      tabHistoryBtn .classList.toggle('border-primary',h);
+    function activateTab(issue, receive, history) {
+      tabIssue.   classList.toggle('hidden', !issue);
+      tabReceive.classList.toggle('hidden', !receive);
+      tabHistory.classList.toggle('hidden', !history);
+      tabIssueBtn.   classList.toggle('border-primary', issue);
+      tabReceiveBtn.classList.toggle('border-primary', receive);
+      tabHistoryBtn.classList.toggle('border-primary', history);
     }
-    tabIssueBtn  .onclick=()=>activateTab(true,false,false);
-    tabReceiveBtn.onclick=()=>activateTab(false,true,false);
-    tabHistoryBtn.onclick=()=>{activateTab(false,false,true);loadHistory();};
+    tabIssueBtn. onclick = () => activateTab(true,false,false);
+    tabReceiveBtn.onclick = () => activateTab(false,true,false);
+    tabHistoryBtn.onclick = () => { activateTab(false,false,true); loadHistory(); };
 
-    function showCustomAlert(msg){
-      const a=document.getElementById('customAlert');
-      a.textContent=msg; a.classList.remove('hidden');
+    function showCustomAlert(msg) {
+      const a = document.getElementById('customAlert');
+      a.textContent = msg;
+      a.classList.remove('hidden');
       setTimeout(()=>a.classList.add('hidden'),3000);
     }
 
-    // LIFF init & load
-    window.onload=async()=>{
-      await liff.init({liffId:LIFF_ID,withLoginOnExternalBrowser:true});
-      if(!liff.isInClient()&&!liff.isLoggedIn()){
-        await liff.login({scope:'profile openid chat_message.write'});
+    // === LIFF init & load ===
+    window.onload = async () => {
+      await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+      if (!liff.isInClient() && !liff.isLoggedIn()) {
+        await liff.login({ scope: 'profile openid chat_message.write' });
         return;
       }
-      const profile=await liff.getProfile();
-      userIdLine=profile.userId;
-      const empSnap=await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
-      borrowerName=empSnap.exists()?Object.values(empSnap.val())[0].fullName:'ไม่ทราบชื่อ';
-      document.getElementById('issueActorName').textContent=borrowerName;
-      document.getElementById('receiveActorName').textContent=borrowerName;
+      const profile = await liff.getProfile();
+      userIdLine = profile.userId;
 
-      // populate lists
+      // ดึงชื่อผู้ใช้จาก employees
+      const empSnap = await employeesRef.orderByChild('userIdLine')
+                                        .equalTo(userIdLine).get();
+      borrowerName = empSnap.exists()
+        ? Object.values(empSnap.val())[0].fullName
+        : 'ไม่ทราบชื่อ';
+      document.getElementById('issueActorName').textContent   = borrowerName;
+      document.getElementById('receiveActorName').textContent = borrowerName;
+
+      // เติม datalist สินค้า
       stockRef.once('value').then(snap=>{
         snap.forEach(ch=>{
-          const d=ch.val();
-          ['inventoryList','inventoryList2'].forEach(id=>{
-            const dl=document.getElementById(id);
-            const opt=document.createElement('option');
-            opt.value=`${d.code} ‒ ${d.name}`;
+          const d = ch.val();
+          ['inventoryList','inventoryList2'].forEach(listId=>{
+            const dl = document.getElementById(listId);
+            const opt = document.createElement('option');
+            opt.value = `${d.code} ‒ ${d.name}`;
             dl.appendChild(opt);
           });
         });
@@ -181,142 +213,183 @@
       activateTab(true,false,false);
     };
 
-    // bind multi-row remove
-    function bindRemoveButtons(){
-      document.querySelectorAll('.remove-item').forEach(btn=>{
-        btn.onclick=()=>{
-          const rows=document.querySelectorAll('.item-row');
-          if(rows.length>1) btn.closest('.item-row').remove();
-        };
+    // === Bind inventory display ===
+    function bindInventory(inputId, codeDisp, nameDisp, remainDisp) {
+      document.getElementById(inputId).addEventListener('input', async ev => {
+        const raw = ev.target.value;
+        const code = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
+        if (!code) return;
+        const snap = await stockRef.child(code).get();
+        if (!snap.exists()) { showCustomAlert('ไม่พบสินค้า'); return; }
+        const d = snap.val();
+        document.getElementById(codeDisp).textContent   = d.code;
+        document.getElementById(nameDisp).textContent   = d.name;
+        document.getElementById(remainDisp).textContent = d.quantity;
       });
     }
-    bindRemoveButtons();
+    bindInventory('issCodeInput','issCodeDisplay','issNameDisplay','issRemainDisplay');
+    bindInventory('recvCodeInput','recvCodeDisplay','recvNameDisplay','recvRemainDisplay');
 
-    // add new issue row
-    document.getElementById('addIssueItem').onclick=()=>{
-      const tmpl=document.querySelector('.item-row');
-      const clone=tmpl.cloneNode(true);
-      clone.querySelector('.code-input').value='';
-      clone.querySelector('.qty-input').value='1';
-      document.getElementById('issueItemsContainer').appendChild(clone);
-      bindRemoveButtons();
-      bindInventory(clone.querySelector('.code-input'),null,null,null);
-    };
-
-    // bind single inventory lookup (used also for dynamic rows)
-    function bindInventory(input,_,__,___){
-      input.addEventListener('input',async ev=>{
-        const raw=ev.target.value;
-        const code=raw.includes(' ‒ ')?raw.split(' ‒ ')[0].trim():raw.trim();
-        if(!code)return;
-        const snap=await stockRef.child(code).get();
-        if(!snap.exists()){showCustomAlert('ไม่พบสินค้า');return;}
-      });
+    // === QR scan setup ===
+    function setupScan(btnId, videoId, inputId) {
+      const canvas = document.createElement('canvas');
+      const ctx    = canvas.getContext('2d');
+      document.getElementById(btnId).onclick = async () => {
+        const video = document.getElementById(videoId);
+        const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
+        video.srcObject = stream; video.play(); video.classList.remove('hidden');
+        (function scan(){
+          if (video.readyState===video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            ctx.drawImage(video,0,0);
+            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
+            if (code) {
+              document.getElementById(inputId).value = code.data.trim();
+              document.getElementById(inputId).dispatchEvent(new Event('input'));
+              video.srcObject.getTracks().forEach(t=>t.stop());
+              video.classList.add('hidden');
+              return;
+            }
+          }
+          requestAnimationFrame(scan);
+        })();
+      };
     }
-    // initial bind
-    document.querySelectorAll('.code-input').forEach(i=>bindInventory(i));
+    setupScan('issScanBtn','issVideo','issCodeInput');
+    setupScan('recvScanBtn','recvVideo','recvCodeInput');
 
-    // fetch admin IDs
-    async function getAdminIds(){
-      const snap=await employeesRef.orderByChild('role').equalTo('admin').get();
-      const ids=[]; snap.forEach(ch=>{
-        const u=ch.val().userIdLine; if(u)ids.push(u);
+    // === Fetch admin IDs ===
+    async function getAdminIds() {
+      const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
+      const ids = [];
+      snap.forEach(ch=>{
+        const u = ch.val().userIdLine;
+        if (u) ids.push(u);
       });
       return ids;
     }
 
-    // notify via GAS
-    async function notifyAdmins(action, items){
-      const admins=await getAdminIds();
-      if(!admins.length)return;
-      fetch(GAS_URL,{
-        method:'POST',
-        mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
+    // === Notify admins via GAS (no-cors) ===
+    async function notifyAdmins(action, code, name, qty, user) {
+      const adminIds = await getAdminIds();
+      if (!adminIds.length) return;
+      fetch(GAS_URL, {
+        method: 'POST',
+        mode:   'no-cors',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
           action,
-          user: borrowerName,
+          code,
+          name,
+          qty,
+          user,
           userId: userIdLine,
           date: new Date().toISOString(),
-          items,
-          toList: admins
+          toList: adminIds
         })
       });
     }
 
-    // submit multi-issue
-    document.getElementById('issSubmit').onclick=async()=>{
-      const rows=document.querySelectorAll('.item-row');
-      const items=[];
-      for(const row of rows){
-        const raw=row.querySelector('.code-input').value;
-        const code=raw.split(' ‒ ')[0].trim();
-        const qty=+row.querySelector('.qty-input').value;
-        if(!code||qty<1)return showCustomAlert('กรุณากรอกให้ครบ');
-        const snap=await stockRef.child(code).get();
-        const avail=snap.val().quantity||0;
-        if(qty>avail) return showCustomAlert(`เบิกเกิน ${code}`);
-        items.push({ code, name:snap.val().name, qty });
-      }
-      const now=new Date().toISOString();
-      for(const it of items){
-        const id=issueRef.push().key;
-        await issueRef.child(id).set({
-          id, date: now,
-          timestamp: firebase.database.ServerValue.TIMESTAMP,
-          borrower: borrowerName,
-          userId: userIdLine,
-          itemCode: it.code,
-          itemName: it.name,
-          quantity: it.qty
-        });
-        await stockRef.child(it.code).child('quantity').transaction(c=>c-it.qty);
-      }
-      // liff message summary
-      const summary=items.map(it=>`${it.code}(${it.qty})`).join('\n');
-      await liff.sendMessages([{type:'text',text:`📤 เบิกหลายรายการ\n${summary}`}]);
-      await notifyAdmins('issue-multi', items);
-      // reset rows to one
-      document.getElementById('issueItemsContainer').innerHTML='';
-      document.getElementById('addIssueItem').click();
+    // === เบิก submit ===
+    document.getElementById('issSubmit').onclick = async () => {
+      const code = document.getElementById('issCodeDisplay').textContent;
+      const qty  = +document.getElementById('issQty').value;
+      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      const snap = await stockRef.child(code).get();
+      const avail = snap.val().quantity||0;
+      if (avail <= 0) return showCustomAlert('สินค้าหมด');
+      if (qty > avail)  return showCustomAlert('เบิกเกินจำนวนคงเหลือ');
+      const recordId = issueRef.push().key;
+      const now      = new Date().toISOString();
+      const name     = document.getElementById('issNameDisplay').textContent;
+      await issueRef.child(recordId).set({
+        id: recordId, date: now,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        borrower: borrowerName,
+        userId: userIdLine,
+        itemCode: code,
+        itemName: name,
+        quantity: qty
+      });
+      await stockRef.child(code).child('quantity').transaction(c => c - qty);
+      await liff.sendMessages([{
+        type: 'text',
+        text: `📤 เบิกสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้เบิก: ${borrowerName}`
+      }]);
+      await notifyAdmins('issue', code, name, qty, borrowerName);
+      document.getElementById('issCodeInput').value = '';
+      document.getElementById('issQty').value       = '1';
       showCustomAlert('เบิกเรียบร้อย');
     };
 
-    // single receive (unchanged)
-    // ... (reuse your existing receive logic) ...
+    // === รับเข้า submit ===
+    document.getElementById('recvSubmit').onclick = async () => {
+      const code = document.getElementById('recvCodeDisplay').textContent;
+      const qty  = +document.getElementById('recvQty').value;
+      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if (qty < 1) return showCustomAlert('จำนวนไม่ถูกต้อง');
+      const recordId = receiveRef.push().key;
+      const now      = new Date().toISOString();
+      const name     = document.getElementById('recvNameDisplay').textContent;
+      await receiveRef.child(recordId).set({
+        id: recordId, date: now,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        borrower: borrowerName,
+        userId: userIdLine,
+        itemCode: code,
+        itemName: name,
+        quantity: qty
+      });
+      await stockRef.child(code).child('quantity').transaction(c => c + qty);
+      await liff.sendMessages([{
+        type: 'text',
+        text: `📥 รับเข้าสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้รับเข้า: ${borrowerName}`
+      }]);
+      await notifyAdmins('receive', code, name, qty, borrowerName);
+      document.getElementById('recvCodeInput').value = '';
+      document.getElementById('recvQty').value       = '1';
+      showCustomAlert('รับเข้าเรียบร้อย');
+    };
 
-    // load & render history
-    async function loadHistory(){
-      const [rSnap,iSnap]=await Promise.all([
+    // === Load & render history ===
+    async function loadHistory() {
+      const [rSnap,iSnap] = await Promise.all([
         receiveRef.once('value'),
         issueRef.once('value')
       ]);
-      const recs=[];
-      rSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'});});
-      iSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'});});
-      recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
-      historyRecords=recs; historyPage=1; renderHistory();
+      const recs = [];
+      rSnap.forEach(ch => { const d = ch.val(); if (d.userId === userIdLine) recs.push({...d,type:'receive'}); });
+      iSnap.forEach(ch => { const d = ch.val(); if (d.userId === userIdLine) recs.push({...d,type:'issue'}); });
+      recs.sort((a,b) => new Date(b.date) - new Date(a.date));
+      historyRecords = recs; historyPage = 1; renderHistory();
     }
-    function renderHistory(){
-      const start=(historyPage-1)*historyPageSize;
-      const page=historyRecords.slice(start,start+historyPageSize);
-      const tbody=document.getElementById('historyTable'); tbody.innerHTML='';
-      page.forEach(d=>{
-        const cls=d.type==='receive'?'bg-green-50':'bg-red-50';
-        const tr=document.createElement('tr'); tr.className=cls;
-        tr.innerHTML=`
-          <td class="px-4 py-2">${new Date(d.date).toLocaleString('th-TH')}</td>
+    function renderHistory() {
+      const start = (historyPage - 1) * historyPageSize;
+      const page  = historyRecords.slice(start, start + historyPageSize);
+      const tbody = document.getElementById('historyTable');
+      tbody.innerHTML = '';
+      page.forEach(d => {
+        const cls = d.type === 'receive' ? 'bg-green-50' : 'bg-red-50';
+        const tr  = document.createElement('tr');
+        tr.className = cls;
+        tr.innerHTML = `
+          <td class="px-4 py-2">${new Date(d.date).toLocaleDateString('th-TH')} ${new Date(d.date).toLocaleTimeString('th-TH')}</td>
           <td class="px-4 py-2">${d.itemName}</td>
           <td class="px-4 py-2">${d.quantity}</td>`;
         tbody.appendChild(tr);
       });
-      const total=Math.max(1,Math.ceil(historyRecords.length/historyPageSize));
-      document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
-      document.getElementById('historyPrev').disabled=historyPage===1;
-      document.getElementById('historyNext').disabled=historyPage===total;
+      const total = Math.max(1, Math.ceil(historyRecords.length / historyPageSize));
+      document.getElementById('historyPageInfo').textContent = `หน้าที่ ${historyPage} จาก ${total}`;
+      document.getElementById('historyPrev').disabled = historyPage === 1;
+      document.getElementById('historyNext').disabled = historyPage === total;
     }
-    document.getElementById('historyPrev').onclick=()=>{if(historyPage>1){historyPage--;renderHistory();}};
-    document.getElementById('historyNext').onclick=()=>{const t=Math.ceil(historyRecords.length/historyPageSize); if(historyPage<t){historyPage++;renderHistory();}};
+    document.getElementById('historyPrev').onclick = () => {
+      if (historyPage > 1) { historyPage--; renderHistory(); }
+    };
+    document.getElementById('historyNext').onclick = () => {
+      const t = Math.ceil(historyRecords.length / historyPageSize);
+      if (historyPage < t) { historyPage++; renderHistory(); }
+    };
   </script>
 </body>
 </html>

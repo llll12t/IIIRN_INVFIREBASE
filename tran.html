@@ -138,11 +138,11 @@
   </div>
 
   <script>
-    // Configuration
+    // === Configuration ===
     const LIFF_ID = '2007335399-rmoYp9Md';
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
 
-    // Firebase refs
+    // === Firebase refs ===
     const stockRef     = db.ref('stock');
     const receiveRef   = db.ref('receiveRecords');
     const issueRef     = db.ref('issueRecords');
@@ -152,7 +152,7 @@
     let historyRecords = [], historyPage = 1;
     const historyPageSize = 15;
 
-    // Tab handling
+    // === Tab handling ===
     const tabIssueBtn   = document.getElementById('tabIssueBtn');
     const tabReceiveBtn = document.getElementById('tabReceiveBtn');
     const tabHistoryBtn = document.getElementById('tabHistoryBtn');
@@ -160,14 +160,14 @@
     const tabReceive    = document.getElementById('tabReceive');
     const tabHistory    = document.getElementById('tabHistory');
     function activateTab(issue, receive, history) {
-      tabIssue.classList.toggle('hidden', !issue);
+      tabIssue.   classList.toggle('hidden', !issue);
       tabReceive.classList.toggle('hidden', !receive);
       tabHistory.classList.toggle('hidden', !history);
-      tabIssueBtn.classList.toggle('border-primary', issue);
+      tabIssueBtn.   classList.toggle('border-primary', issue);
       tabReceiveBtn.classList.toggle('border-primary', receive);
       tabHistoryBtn.classList.toggle('border-primary', history);
     }
-    tabIssueBtn.onclick   = () => activateTab(true,false,false);
+    tabIssueBtn. onclick = () => activateTab(true,false,false);
     tabReceiveBtn.onclick = () => activateTab(false,true,false);
     tabHistoryBtn.onclick = () => { activateTab(false,false,true); loadHistory(); };
 
@@ -178,7 +178,7 @@
       setTimeout(()=>a.classList.add('hidden'),3000);
     }
 
-    // LIFF init & load
+    // === LIFF init & load ===
     window.onload = async () => {
       await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
       if (!liff.isInClient() && !liff.isLoggedIn()) {
@@ -188,7 +188,7 @@
       const profile = await liff.getProfile();
       userIdLine = profile.userId;
 
-      // Get user name
+      // ดึงชื่อผู้ใช้จาก employees
       const empSnap = await employeesRef.orderByChild('userIdLine')
                                         .equalTo(userIdLine).get();
       borrowerName = empSnap.exists()
@@ -197,7 +197,7 @@
       document.getElementById('issueActorName').textContent   = borrowerName;
       document.getElementById('receiveActorName').textContent = borrowerName;
 
-      // Populate product lists
+      // เติม datalist สินค้า
       stockRef.once('value').then(snap=>{
         snap.forEach(ch=>{
           const d = ch.val();
@@ -213,9 +213,9 @@
       activateTab(true,false,false);
     };
 
-    // Bind inventory display
+    // === Bind inventory display ===
     function bindInventory(inputId, codeDisp, nameDisp, remainDisp) {
-      document.getElementById(inputId).addEventListener('input', async ev=>{
+      document.getElementById(inputId).addEventListener('input', async ev => {
         const raw = ev.target.value;
         const code = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
         if (!code) return;
@@ -230,20 +230,20 @@
     bindInventory('issCodeInput','issCodeDisplay','issNameDisplay','issRemainDisplay');
     bindInventory('recvCodeInput','recvCodeDisplay','recvNameDisplay','recvRemainDisplay');
 
-    // QR scan setup
+    // === QR scan setup ===
     function setupScan(btnId, videoId, inputId) {
       const canvas = document.createElement('canvas');
       const ctx    = canvas.getContext('2d');
-      document.getElementById(btnId).onclick = async ()=>{
+      document.getElementById(btnId).onclick = async () => {
         const video = document.getElementById(videoId);
         const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
-        video.srcObject=stream; video.play(); video.classList.remove('hidden');
+        video.srcObject = stream; video.play(); video.classList.remove('hidden');
         (function scan(){
-          if(video.readyState===video.HAVE_ENOUGH_DATA){
-            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+          if (video.readyState===video.HAVE_ENOUGH_DATA) {
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             ctx.drawImage(video,0,0);
             const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
-            if(code){
+            if (code) {
               document.getElementById(inputId).value = code.data.trim();
               document.getElementById(inputId).dispatchEvent(new Event('input'));
               video.srcObject.getTracks().forEach(t=>t.stop());
@@ -258,15 +258,18 @@
     setupScan('issScanBtn','issVideo','issCodeInput');
     setupScan('recvScanBtn','recvVideo','recvCodeInput');
 
-    // Fetch admin IDs
+    // === Fetch admin IDs ===
     async function getAdminIds() {
       const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
       const ids = [];
-      snap.forEach(ch=>{ const u=ch.val().userIdLine; if(u) ids.push(u); });
+      snap.forEach(ch=>{
+        const u = ch.val().userIdLine;
+        if (u) ids.push(u);
+      });
       return ids;
     }
 
-    // Notify admins via GAS (no-cors)
+    // === Notify admins via GAS (no-cors) ===
     async function notifyAdmins(action, code, name, qty, user) {
       const adminIds = await getAdminIds();
       if (!adminIds.length) return;
@@ -274,19 +277,28 @@
         method: 'POST',
         mode:   'no-cors',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ action, code, name, qty, user, userId: userIdLine, toList: adminIds })
+        body: JSON.stringify({
+          action,
+          code,
+          name,
+          qty,
+          user,
+          userId: userIdLine,
+          date: new Date().toISOString(),
+          toList: adminIds
+        })
       });
     }
 
-    // Issue submit
-    document.getElementById('issSubmit').onclick = async ()=>{
+    // === เบิก submit ===
+    document.getElementById('issSubmit').onclick = async () => {
       const code = document.getElementById('issCodeDisplay').textContent;
       const qty  = +document.getElementById('issQty').value;
-      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
       const snap = await stockRef.child(code).get();
       const avail = snap.val().quantity||0;
-      if(avail<=0)    return showCustomAlert('สินค้าหมด');
-      if(qty>avail)   return showCustomAlert('เบิกเกินจำนวนคงเหลือ');
+      if (avail <= 0) return showCustomAlert('สินค้าหมด');
+      if (qty > avail)  return showCustomAlert('เบิกเกินจำนวนคงเหลือ');
       const recordId = issueRef.push().key;
       const now      = new Date().toISOString();
       const name     = document.getElementById('issNameDisplay').textContent;
@@ -299,21 +311,23 @@
         itemName: name,
         quantity: qty
       });
-      await stockRef.child(code).child('quantity').transaction(c=>c-qty);
-      await liff.sendMessages([{ type:'text', text:
-        `📤 เบิกสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้เบิก: ${borrowerName}` }]);
+      await stockRef.child(code).child('quantity').transaction(c => c - qty);
+      await liff.sendMessages([{
+        type: 'text',
+        text: `📤 เบิกสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้เบิก: ${borrowerName}`
+      }]);
       await notifyAdmins('issue', code, name, qty, borrowerName);
-      document.getElementById('issCodeInput').value='';
-      document.getElementById('issQty').value='1';
+      document.getElementById('issCodeInput').value = '';
+      document.getElementById('issQty').value       = '1';
       showCustomAlert('เบิกเรียบร้อย');
     };
 
-    // Receive submit
-    document.getElementById('recvSubmit').onclick = async ()=>{
+    // === รับเข้า submit ===
+    document.getElementById('recvSubmit').onclick = async () => {
       const code = document.getElementById('recvCodeDisplay').textContent;
       const qty  = +document.getElementById('recvQty').value;
-      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
-      if(qty<1) return showCustomAlert('จำนวนไม่ถูกต้อง');
+      if (!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if (qty < 1) return showCustomAlert('จำนวนไม่ถูกต้อง');
       const recordId = receiveRef.push().key;
       const now      = new Date().toISOString();
       const name     = document.getElementById('recvNameDisplay').textContent;
@@ -326,51 +340,55 @@
         itemName: name,
         quantity: qty
       });
-      await stockRef.child(code).child('quantity').transaction(c=>c+qty);
-      await liff.sendMessages([{ type:'text', text:
-        `📥 รับเข้าสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้รับเข้า: ${borrowerName}` }]);
+      await stockRef.child(code).child('quantity').transaction(c => c + qty);
+      await liff.sendMessages([{
+        type: 'text',
+        text: `📥 รับเข้าสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้รับเข้า: ${borrowerName}`
+      }]);
       await notifyAdmins('receive', code, name, qty, borrowerName);
-      document.getElementById('recvCodeInput').value='';
-      document.getElementById('recvQty').value='1';
+      document.getElementById('recvCodeInput').value = '';
+      document.getElementById('recvQty').value       = '1';
       showCustomAlert('รับเข้าเรียบร้อย');
     };
 
-    // Load & render history
+    // === Load & render history ===
     async function loadHistory() {
       const [rSnap,iSnap] = await Promise.all([
         receiveRef.once('value'),
         issueRef.once('value')
       ]);
       const recs = [];
-      rSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'}); });
-      iSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'}); });
-      recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
-      historyRecords=recs; historyPage=1; renderHistory();
+      rSnap.forEach(ch => { const d = ch.val(); if (d.userId === userIdLine) recs.push({...d,type:'receive'}); });
+      iSnap.forEach(ch => { const d = ch.val(); if (d.userId === userIdLine) recs.push({...d,type:'issue'}); });
+      recs.sort((a,b) => new Date(b.date) - new Date(a.date));
+      historyRecords = recs; historyPage = 1; renderHistory();
     }
     function renderHistory() {
-      const start=(historyPage-1)*historyPageSize;
-      const page=historyRecords.slice(start,start+historyPageSize);
-      const tbody=document.getElementById('historyTable'); tbody.innerHTML='';
-      page.forEach(d=>{
-        const cls=d.type==='receive'?'bg-green-50':'bg-red-50';
-        const tr=document.createElement('tr'); tr.className=cls;
-        tr.innerHTML=`
-          <td class="px-4 py-2">${new Date(d.date).toLocaleDateString('th-TH')}</td>
+      const start = (historyPage - 1) * historyPageSize;
+      const page  = historyRecords.slice(start, start + historyPageSize);
+      const tbody = document.getElementById('historyTable');
+      tbody.innerHTML = '';
+      page.forEach(d => {
+        const cls = d.type === 'receive' ? 'bg-green-50' : 'bg-red-50';
+        const tr  = document.createElement('tr');
+        tr.className = cls;
+        tr.innerHTML = `
+          <td class="px-4 py-2">${new Date(d.date).toLocaleDateString('th-TH')} ${new Date(d.date).toLocaleTimeString('th-TH')}</td>
           <td class="px-4 py-2">${d.itemName}</td>
           <td class="px-4 py-2">${d.quantity}</td>`;
         tbody.appendChild(tr);
       });
-      const total=Math.ceil(historyRecords.length/historyPageSize)||1;
-      document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
-      document.getElementById('historyPrev').disabled=historyPage===1;
-      document.getElementById('historyNext').disabled=historyPage===total;
+      const total = Math.max(1, Math.ceil(historyRecords.length / historyPageSize));
+      document.getElementById('historyPageInfo').textContent = `หน้าที่ ${historyPage} จาก ${total}`;
+      document.getElementById('historyPrev').disabled = historyPage === 1;
+      document.getElementById('historyNext').disabled = historyPage === total;
     }
-    document.getElementById('historyPrev').onclick=()=>{
-      if(historyPage>1){historyPage--; renderHistory();}
+    document.getElementById('historyPrev').onclick = () => {
+      if (historyPage > 1) { historyPage--; renderHistory(); }
     };
-    document.getElementById('historyNext').onclick=()=>{
-      const t=Math.ceil(historyRecords.length/historyPageSize);
-      if(historyPage<t){historyPage++; renderHistory();}
+    document.getElementById('historyNext').onclick = () => {
+      const t = Math.ceil(historyRecords.length / historyPageSize);
+      if (historyPage < t) { historyPage++; renderHistory(); }
     };
   </script>
 </body>

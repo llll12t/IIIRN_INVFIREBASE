@@ -11,30 +11,30 @@
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script> <!-- Included from your original code -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <!-- IMPORTANT: Make sure your firebase-config.js is in the same directory and configured correctly -->
   <script src="firebase-config.js"></script>
 
   <script>
-    // Tailwind CSS Configuration (for custom colors and fonts)
+    // Tailwind CSS Configuration
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            primary: { // Custom primary color
-              light: '#60A5FA', // Blue-300
-              DEFAULT: '#3B82F6', // Blue-500
-              dark: '#2563EB',  // Blue-700
+            primary: {
+              light: '#60A5FA',
+              DEFAULT: '#3B82F6',
+              dark: '#2563EB',
             },
-            secondary: { // A secondary color for accents if needed
-              light: '#A78BFA', // Purple-300
-              DEFAULT: '#8B5CF6', // Purple-500
-              dark: '#7C3AED',  // Purple-700
+            secondary: {
+              light: '#A78BFA',
+              DEFAULT: '#8B5CF6',
+              dark: '#7C3AED',
             }
           },
           fontFamily: {
-            sans: ['Sukhumvit Set', 'Kanit', 'sans-serif'], // Add Thai fonts
+            sans: ['Sukhumvit Set', 'Kanit', 'sans-serif'],
           }
         }
       }
@@ -42,14 +42,13 @@
   </script>
 
   <style>
-    /* Custom Alert Styles */
     #customAlert {
       transition: all 0.3s ease-in-out;
-      transform: translateX(100%); /* Start off-screen to the right */
+      transform: translateX(100%);
       opacity: 0;
     }
     #customAlert.show {
-      transform: translateX(0); /* Slide in */
+      transform: translateX(0);
       opacity: 1;
     }
     #customAlert.success {
@@ -58,8 +57,6 @@
     #customAlert.error {
       background-color: #EF4444; /* Red-500 */
     }
-
-    /* Spinner animation for loading states */
     .spinner {
       border: 4px solid rgba(255, 255, 255, 0.3);
       border-top: 4px solid #fff;
@@ -72,10 +69,8 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-
-    /* Specific styles for active tab border */
     .tab-button.active {
-      border-color: var(--tw-colors-primary-DEFAULT); /* Use the primary color defined in Tailwind config */
+      border-color: var(--tw-colors-primary-DEFAULT);
       color: var(--tw-colors-primary-DEFAULT);
     }
   </style>
@@ -208,17 +203,10 @@
 
   <script>
     // Configuration constants
-    const LIFF_ID       = '2007335399-rmoYp9Md'; // Replace with your LIFF ID
-    const GAS_URL       = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; // Replace with your Google Apps Script URL
+    const LIFF_ID       = '2007335399-rmoYp9Md'; // <<<--- YOUR LIFF ID
+    const GAS_URL       = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; // <<<--- YOUR GAS URL
     
-    // Firebase references (assuming db is initialized in firebase-config.js)
-    // Make sure your firebase-config.js initializes Firebase and exports 'db'
-    // Example:
-    // firebase.initializeApp(YOUR_FIREBASE_CONFIG);
-    // const db = firebase.database();
-    // (if you need to access it globally, you might need to make 'db' a global variable,
-    // or pass it around, or simply ensure this script runs AFTER firebase-config.js)
-    // For simplicity, I'm assuming 'db' is available globally from firebase-config.js.
+    // Firebase references
     const stockRef      = db.ref('stock');
     const issueRef      = db.ref('issueRecords');
     const receiveRef    = db.ref('receiveRecords');
@@ -232,58 +220,38 @@
     let basketReceive   = [];
     let historyRecords  = [];
     let historyPage     = 1;
-    const pageSize      = 15; // Items per page for history
+    const pageSize      = 15;
 
     // --- UI Helper Functions ---
     const customAlert = document.getElementById('customAlert');
     const alertMessage = document.getElementById('alertMessage');
     const alertIcon = document.getElementById('alertIcon');
 
-    /**
-     * Displays a custom alert message.
-     * @param {string} msg - The message to display.
-     * @param {'success' | 'error'} type - The type of alert (changes color and icon).
-     */
     function showAlert(msg, type = 'error'){
       alertMessage.textContent = msg;
       customAlert.classList.remove('success', 'error');
       customAlert.classList.add(type);
 
-      // Set icon based on type
       if (type === 'success') {
         alertIcon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>`;
-      } else { // error
+      } else {
         alertIcon.innerHTML = `<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>`;
       }
 
       customAlert.classList.add('show');
-      setTimeout(() => customAlert.classList.remove('show'), 3000); // Auto-dismiss after 3 seconds
+      setTimeout(() => customAlert.classList.remove('show'), 3000);
     }
 
-    /**
-     * Manages the loading state of a button (disables, changes text, shows spinner).
-     * @param {string} buttonId - The ID of the button element (e.g., 'submitIssueBtn').
-     * @param {boolean} isLoading - True to show loading state, false to revert.
-     * @param {string} originalText - The original text of the button.
-     */
     function setButtonLoading(buttonId, isLoading, originalText) {
         const button = document.getElementById(buttonId);
-
-        // --- CORRECTED LOGIC FOR btnText AND btnSpinner IDs ---
-        // Example: 'submitIssueBtn' -> 'issueBtn' (first letter lowercase)
-        const baseId = buttonId.replace('submit', ''); // e.g., "IssueBtn" or "ReceiveBtn"
-        const idPrefix = baseId.charAt(0).toLowerCase() + baseId.slice(1, -3); // "issue" or "receive" (removes "Btn" suffix)
-
+        const baseId = buttonId.replace('submit', '');
+        const idPrefix = baseId.charAt(0).toLowerCase() + baseId.slice(1, -3);
         const btnText = document.getElementById(`${idPrefix}BtnText`);
         const btnSpinner = document.getElementById(`${idPrefix}BtnSpinner`);
-        // --- END CORRECTED LOGIC ---
 
-        // Safety check: Ensure elements exist before trying to modify them
-        if (!btnText || !btnSpinner) {
-            console.error(`Error: Could not find text or spinner element for buttonId: ${buttonId}. Check generated IDs: ${idPrefix}BtnText, ${idPrefix}BtnSpinner`);
-            // Attempt to disable the main button anyway to prevent double-clicks
-            if (button) button.disabled = isLoading;
-            return; // Exit function to prevent further errors
+        if (!button || !btnText || !btnSpinner) {
+            console.error(`Could not find elements for buttonId: ${buttonId}`);
+            return;
         }
 
         if (isLoading) {
@@ -296,34 +264,34 @@
             btnSpinner.classList.add('hidden');
         }
     }
-
+    
     /**
-     * Updates the display of items in the basket list.
-     * @param {string} listId - The ID of the <ul> element for the basket.
-     * @param {Array<Object>} basket - The array of items in the basket.
-     * @param {string} btnId - The ID of the submit button to enable/disable.
+     * [MODIFIED] Updates basket UI. Shows stock balance for issue basket.
      */
-    function updateBasket(listId, basket, btnId){
-      const basketElement = document.getElementById(listId);
-      basketElement.innerHTML = basket.map(it=>`
-        <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm border border-gray-100">
-          <div class="flex-grow">
-            <span class="text-sm font-medium text-gray-800">${it.code}</span>
-            <span class="block text-md text-gray-700">${it.name} × <span class="font-bold">${it.qty}</span></span>
-          </div>
-          <button onclick="removeFromBasket('${listId}','${it.code}','${btnId}')" class="text-red-500 text-lg font-bold hover:text-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 rounded-full px-2">
-            ×
-          </button>
-        </li>`).join('');
-      document.getElementById(btnId).disabled = basket.length === 0;
+    function updateBasket(listId, basket, btnId) {
+        const basketElement = document.getElementById(listId);
+        basketElement.innerHTML = basket.map(it => {
+            const stockInfo = listId === 'basketIssue'
+                ? `<span class="text-xs text-gray-500">(คงเหลือ: ${it.stockQty ?? 'N/A'})</span>`
+                : '';
+
+            return `
+            <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm border border-gray-100">
+                <div class="flex-grow">
+                    <span class="text-sm font-medium text-gray-800">${it.code}</span>
+                    <div class="flex items-baseline justify-between pr-2">
+                        <span class="block text-md text-gray-700">${it.name} × <span class="font-bold">${it.qty}</span></span>
+                        ${stockInfo}
+                    </div>
+                </div>
+                <button onclick="removeFromBasket('${listId}','${it.code}','${btnId}')" class="text-red-500 text-lg font-bold hover:text-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 rounded-full px-2 ml-2 flex-shrink-0">
+                ×
+                </button>
+            </li>`;
+        }).join('');
+        document.getElementById(btnId).disabled = basket.length === 0;
     }
 
-    /**
-     * Removes an item from the basket.
-     * @param {string} listId - The ID of the basket list ('basketIssue' or 'basketReceive').
-     * @param {string} code - The item code to remove.
-     * @param {string} btnId - The ID of the submit button associated with the basket.
-     */
     window.removeFromBasket = (listId, code, btnId) => {
       if(listId==='basketIssue') {
         basketIssue = basketIssue.filter(x => x.code !== code);
@@ -335,9 +303,6 @@
       showAlert('นำสินค้าออกจากตะกร้าแล้ว', 'success');
     };
 
-    /**
-     * Initializes LIFF, gets user profile, and loads inventory data.
-     */
     async function liffInit(){
       try {
         await liff.init({ liffId: LIFF_ID });
@@ -349,7 +314,7 @@
 
         const snapIssue = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
         actorIssue   = snapIssue.exists()? Object.values(snapIssue.val())[0].fullName : 'ไม่ทราบชื่อ';
-        actorReceive = actorIssue; // Assuming same actor for both issue and receive
+        actorReceive = actorIssue; 
 
         document.getElementById('actorIssue').textContent   = actorIssue;
         document.getElementById('actorReceive').textContent = actorReceive;
@@ -367,24 +332,17 @@
       }
     }
 
-    /**
-     * Sets up QR scanning functionality for a given button and video elements.
-     * @param {string} btnId - The ID of the button that triggers scanning.
-     * @param {string} videoId - The ID of the <video> element for camera feed.
-     * @param {string} containerId - The ID of the container for the video element.
-     * @param {'issue' | 'receive'} listKey - Determines which basket (issue/receive) to add to.
-     */
     function setupScan(btnId, videoId, containerId, listKey){
       document.getElementById(btnId).onclick = async ()=>{
         const video = document.getElementById(videoId);
         const videoContainer = document.getElementById(containerId);
-        let stream = null; // Declare stream here to make it accessible for stopping
+        let stream = null;
 
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
           video.srcObject = stream;
           video.play();
-          videoContainer.classList.remove('hidden'); // Show video feed
+          videoContainer.classList.remove('hidden');
 
           const canvas=document.createElement('canvas');
           const ctx=canvas.getContext('2d');
@@ -396,21 +354,21 @@
               ctx.drawImage(video,0,0);
               const code=jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
               if(code){
-                addToBasket(listKey,code.data.trim());
-                stream.getTracks().forEach(t=>t.stop()); // Stop camera
-                videoContainer.classList.add('hidden'); // Hide video feed
-                showAlert('สแกนสำเร็จ!', 'success');
-                return; // Stop scanning
+                addToBasket(listKey,code.data.trim(), 1); // QR scan always adds 1
+                stream.getTracks().forEach(t=>t.stop());
+                videoContainer.classList.add('hidden');
+                // showAlert('สแกนสำเร็จ!', 'success'); // addToBasket will show its own alert
+                return;
               }
             }
-            requestAnimationFrame(scan); // Continue scanning
+            requestAnimationFrame(scan);
           }
-          scan(); // Start the scan loop
+          scan();
         } catch (err) {
           console.error("Camera access error: ", err);
-          showAlert('ไม่สามารถเข้าถึงกล้องได้ โปรดตรวจสอบสิทธิ์การเข้าถึงกล้อง');
-          if (stream) stream.getTracks().forEach(t=>t.stop()); // Ensure stream is stopped on error
-          videoContainer.classList.add('hidden'); // Hide video feed
+          showAlert('ไม่สามารถเข้าถึงกล้องได้ โปรดตรวจสอบสิทธิ์การเข้าถึง');
+          if (stream) stream.getTracks().forEach(t=>t.stop());
+          videoContainer.classList.add('hidden');
         }
       };
     }
@@ -418,258 +376,265 @@
     setupScan('scanReceiveBtn','videoReceive','videoReceiveContainer','receive');
 
     /**
-     * Adds an item to the appropriate basket based on item code.
-     * @param {'issue' | 'receive'} key - Determines which basket (issue/receive) to add to.
-     * @param {string} code - The item code to add.
+     * [MODIFIED] Adds item to basket with stock checks for 'issue'.
      */
-    async function addToBasket(key, code){
-      const snap = await stockRef.child(code).get();
-      if(!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`);
-        return;
-      }
-      const d = snap.val();
-      const target = key==='issue'? basketIssue : basketReceive;
-      const existingItem = target.find(x=>x.code===code);
+    async function addToBasket(key, code, qty = 1) {
+        const snap = await stockRef.child(code).get();
+        if (!snap.exists()) {
+            return showAlert(`ไม่พบสินค้า "${code}"`, 'error');
+        }
+        const d = snap.val();
+        const stockQty = d.quantity || 0;
 
-      if(existingItem){
-        // If from QR, quantity remains 1, just inform it's already there
-        showAlert(`สินค้า "${d.name}" ถูกเพิ่มแล้วในตะกร้า`, 'success');
-      } else {
-        target.push({ code, name:d.name, qty:1 }); // Add with default quantity 1
-        showAlert(`เพิ่ม "${d.name}" เข้าตะกร้า`, 'success');
-      }
-      updateBasket(key==='issue'? 'basketIssue':'basketReceive', target, key==='issue'? 'submitIssueBtn':'submitReceiveBtn');
+        if (key === 'issue') {
+            const existingItem = basketIssue.find(x => x.code === code);
+            const qtyInBasket = existingItem ? existingItem.qty : 0;
+            const newTotalQty = qtyInBasket + qty;
+
+            if (stockQty <= 0) {
+                 return showAlert(`สินค้า "${d.name}" หมดสต็อกแล้ว`, 'error');
+            }
+            if (newTotalQty > stockQty) {
+                return showAlert(`เบิกเกิน! "${d.name}" มีคงเหลือ ${stockQty} ชิ้น`, 'error');
+            }
+            
+            if (existingItem) {
+                existingItem.qty = newTotalQty;
+                existingItem.stockQty = stockQty;
+                showAlert(`เพิ่มจำนวน "${d.name}" ในตะกร้า`, 'success');
+            } else {
+                basketIssue.push({ code, name: d.name, qty, stockQty });
+                showAlert(`เพิ่ม "${d.name}" เข้าตะกร้า`, 'success');
+            }
+            updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
+
+        } else { // 'receive' logic
+            const existingItem = basketReceive.find(x => x.code === code);
+            if (existingItem) {
+                existingItem.qty += qty;
+                showAlert(`เพิ่มจำนวน "${d.name}" ในตะกร้า`, 'success');
+            } else {
+                basketReceive.push({ code, name: d.name, qty });
+                showAlert(`เพิ่ม "${d.name}" เข้าตะกร้า`, 'success');
+            }
+            updateBasket('basketReceive', basketReceive, 'submitReceiveBtn');
+        }
     }
 
     /**
-     * Handles adding items to the issue basket via manual input.
+     * [MODIFIED] Handles manual add to issue basket with stock checks.
      */
     document.getElementById('addIssueBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeIssue').value.trim();
-      const code = raw.split(' ‒ ')[0]; // Extract code before ' ‒ '
+      const code = raw.split(' ‒ ')[0];
       const qty = +document.getElementById('manualQtyIssue').value;
 
       if(!code || qty < 1) {
-        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง');
+        return showAlert('กรุณาระบุรหัสและจำนวนให้ถูกต้อง');
       }
 
       const snap = await stockRef.child(code).get();
       if(!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`);
-        return;
+        return showAlert(`ไม่พบสินค้า "${code}"`, 'error');
       }
       const d = snap.val();
-      const existingItem = basketIssue.find(x => x.code === code);
+      const stockQty = d.quantity || 0;
 
-      if (existingItem) {
-        existingItem.qty = qty; // Update quantity if item already exists
-        showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty}`, 'success');
-      } else {
-        basketIssue.push({ code, name: d.name, qty: qty }); // Add new item
-        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น เข้าตะกร้า`, 'success');
+      // The critical check
+      if (qty > stockQty) {
+        return showAlert(`เบิกเกิน! "${d.name}" เหลือ ${stockQty} ชิ้น`, 'error');
       }
+      
+      const existingItem = basketIssue.find(x => x.code === code);
+      if (existingItem) {
+        existingItem.qty = qty; // Update quantity
+        existingItem.stockQty = stockQty;
+        showAlert(`อัปเดตจำนวน "${d.name}" เป็น ${qty} ชิ้น`, 'success');
+      } else {
+        basketIssue.push({ code, name: d.name, qty, stockQty });
+        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น`, 'success');
+      }
+
       updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
-      document.getElementById('manualCodeIssue').value = ''; // Clear input
-      document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
+      document.getElementById('manualCodeIssue').value = '';
+      document.getElementById('manualQtyIssue').value = '1';
     };
 
-    /**
-     * Handles adding items to the receive basket via manual input.
-     */
     document.getElementById('addReceiveBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeReceive').value.trim();
-      const code = raw.split(' ‒ ')[0]; // Extract code before ' ‒ '
+      const code = raw.split(' ‒ ')[0];
       const qty = +document.getElementById('manualQtyReceive').value;
 
       if(!code || qty < 1) {
-        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง');
+        return showAlert('กรุณาระบุรหัสและจำนวนให้ถูกต้อง');
       }
-
       const snap = await stockRef.child(code).get();
       if(!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`);
-        return;
+        return showAlert(`ไม่พบสินค้า "${code}"`, 'error');
       }
       const d = snap.val();
       const existingItem = basketReceive.find(x => x.code === code);
 
       if (existingItem) {
-        existingItem.qty = qty; // Update quantity if item already exists
-        showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty}`, 'success');
+        existingItem.qty = qty;
+        showAlert(`อัปเดตจำนวน "${d.name}" เป็น ${qty} ชิ้น`, 'success');
       } else {
-        basketReceive.push({ code, name: d.name, qty: qty }); // Add new item
-        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น เข้าตะกร้า`, 'success');
+        basketReceive.push({ code, name: d.name, qty });
+        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น`, 'success');
       }
       updateBasket('basketReceive', basketReceive, 'submitReceiveBtn');
-      document.getElementById('manualCodeReceive').value = ''; // Clear input
-      document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
+      document.getElementById('manualCodeReceive').value = '';
+      document.getElementById('manualQtyReceive').value = '1';
     };
 
-    /**
-     * Fetches admin user IDs from Firebase.
-     * @returns {Promise<string[]>} An array of LINE user IDs for admins.
-     */
     async function getAdminIds(){
       const snap=await employeesRef.orderByChild('role').equalTo('admin').get();
       const ids=[]; snap.forEach(ch=>{ const u=ch.val().userIdLine; if(u)ids.push(u); });
       return ids;
     }
 
-    /**
-     * Notifies admin users via Google Apps Script (GAS).
-     * @param {'issue' | 'receive'} action - The type of action (issue or receive).
-     * @param {Array<Object>} items - The list of items involved in the transaction.
-     */
     async function notifyAdmins(action, items){
       const toList = await getAdminIds();
       if(!toList.length) {
         console.warn('No admin IDs found for notification.');
         return;
       }
-
-      // Prepare items for GAS: only send necessary data
-      const simplifiedItems = items.map(item => ({
-        code: item.code,
-        name: item.name,
-        qty: item.qty
-      }));
-
+      const simplifiedItems = items.map(item => ({ code: item.code, name: item.name, qty: item.qty }));
       try {
         await fetch(GAS_URL,{
           method:'POST',
-          mode:'no-cors', // Use 'no-cors' if your GAS is public and doesn't handle CORS.
+          mode:'no-cors',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            action,
-            user: (action === 'issue' ? actorIssue : actorReceive),
-            userId: userIdLine,
-            date: new Date().toISOString(),
-            items: simplifiedItems,
-            toList
-          })
+          body: JSON.stringify({ action, user: (action === 'issue' ? actorIssue : actorReceive), userId: userIdLine, date: new Date().toISOString(), items: simplifiedItems, toList })
         });
         console.log('Admin notification sent via GAS.');
       } catch (error) {
         console.error('Error sending admin notification via GAS:', error);
       }
     }
+    
+    /**
+     * [NEW] Creates a Flex Message for transaction notifications.
+     */
+    function createTransactionFlexMessage(action, actor, items) {
+        const isIssue = action === 'issue';
+        const headerText = isIssue ? 'แจ้งเบิกสินค้า' : 'แจ้งรับเข้าสินค้า';
+        const headerColor = isIssue ? '#DC2626' : '#16A34A'; // Red-600 for issue, Green-600 for receive
+
+        const itemComponents = items.map(item => ({
+            "type": "box", "layout": "horizontal", "margin": "md", "contents": [
+                { "type": "text", "text": `${item.name}`, "wrap": true, "size": "sm", "color": "#555555", "flex": 4 },
+                { "type": "text", "text": `x ${item.qty}`, "size": "sm", "color": "#111111", "align": "end", "flex": 1, "weight": "bold" }
+            ]
+        }));
+
+        return { "type": "flex", "altText": `[${headerText}] โดย ${actor}`, "contents": {
+            "type": "bubble", "size": "giga", "header": {
+                "type": "box", "layout": "vertical", "backgroundColor": headerColor, "paddingAll": "12px", "contents": [
+                    { "type": "text", "text": headerText, "color": "#FFFFFF", "size": "md", "weight": "bold" }
+                ]
+            },
+            "body": { "type": "box", "layout": "vertical", "spacing": "md", "contents": [
+                    { "type": "text", "text": "สรุปรายการ", "weight": "bold", "size": "xl" },
+                    { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
+                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                            { "type": "text", "text": "ผู้ทำรายการ", "color": "#aaaaaa", "size": "sm", "flex": 3 },
+                            { "type": "text", "text": actor, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
+                        ]},
+                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                            { "type": "text", "text": "วันที่/เวลา", "color": "#aaaaaa", "size": "sm", "flex": 3 },
+                            { "type": "text", "text": new Date().toLocaleString('th-TH'), "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
+                        ]}
+                    ]},
+                    { "type": "separator", "margin": "xxl" },
+                    ...itemComponents,
+                    { "type": "separator", "margin": "xxl" }
+                ]
+            }
+        }};
+    }
 
     /**
-     * Handles the submission of multiple issue items.
+     * [MODIFIED] Handles submission of issue items with final validation and Flex message.
      */
     document.getElementById('submitIssueBtn').onclick = async ()=>{
       if(!basketIssue.length) return;
-      setButtonLoading('submitIssueBtn', true, 'ยืนยันเบิก (หลายรายการ)'); // Show loading state
+      setButtonLoading('submitIssueBtn', true, 'ยืนยันเบิก (หลายรายการ)');
       try {
+        // Final validation before submission
+        for (const item of basketIssue) {
+            const stockSnap = await stockRef.child(item.code).child('quantity').get();
+            const currentStock = stockSnap.val() || 0;
+            if (item.qty > currentStock) {
+                showAlert(`เบิกเกิน! "${item.name}" มีเหลือแค่ ${currentStock} ชิ้น`, 'error');
+                item.stockQty = currentStock; // Update UI with correct stock
+                updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
+                setButtonLoading('submitIssueBtn', false, 'ยืนยันเบิก (หลายรายการ)');
+                return; // Stop submission
+            }
+        }
+        
         const now = new Date().toISOString();
-        const itemsToProcess = [...basketIssue]; // Create a copy to iterate
+        const itemsToProcess = [...basketIssue];
 
-        // Perform Firebase database updates
         for(const it of itemsToProcess){
           const key=issueRef.push().key;
-          await issueRef.child(key).set({
-            id:key,
-            date:now,
-            timestamp:firebase.database.ServerValue.TIMESTAMP,
-            borrower:actorIssue,
-            userId:userIdLine,
-            itemCode:it.code,
-            itemName:it.name,
-            quantity:it.qty
-          });
-          await stockRef.child(it.code).child('quantity').transaction(c=>{
-            // Ensure quantity doesn't go below zero
-            return (c === null || c === undefined || c - it.qty < 0) ? 0 : c - it.qty;
-          });
+          await issueRef.child(key).set({ id:key, date:now, timestamp:firebase.database.ServerValue.TIMESTAMP, borrower:actorIssue, userId:userIdLine, itemCode:it.code, itemName:it.name, quantity:it.qty });
+          await stockRef.child(it.code).child('quantity').transaction(c => (c || 0) - it.qty);
         }
 
-        // --- Prepare Text Message for LIFF ---
-        let messageText = "📤 *แจ้งเบิกสินค้าหลายรายการ*\n\n";
-        messageText += `ผู้เบิก: ${actorIssue}\n\n`;
-        messageText += "รายการเบิก:\n";
-        itemsToProcess.forEach(item => {
-            messageText += `- ${item.name} (รหัส: ${item.code}) จำนวน ${item.qty} ชิ้น\n`;
-        });
-        messageText += `\nวันที่/เวลา: ${new Date().toLocaleString('th-TH')}`;
-        // --- End Text Message Preparation ---
-
-        // LIFF supports only one message type per sendMessages call.
-        // If you were to send both Flex and Text, you'd need two liff.sendMessages calls.
-        // Here we explicitly only send a text message.
-        await liff.sendMessages([{type: 'text', text: messageText}]);
+        const flexMessage = createTransactionFlexMessage('issue', actorIssue, itemsToProcess);
+        await liff.sendMessages([flexMessage]);
         
-        await notifyAdmins('issue', itemsToProcess); // Notify admins via GAS
+        await notifyAdmins('issue', itemsToProcess);
         showAlert('เบิกสินค้าเรียบร้อยแล้ว', 'success');
-        basketIssue = []; // Clear basket
-        updateBasket('basketIssue', [], 'submitIssueBtn'); // Update UI
+        basketIssue = [];
+        updateBasket('basketIssue', [], 'submitIssueBtn');
       } catch (error) {
         console.error("Error submitting issue: ", error);
         showAlert('เกิดข้อผิดพลาดในการเบิกสินค้า: ' + error.message);
       } finally {
-        setButtonLoading('submitIssueBtn', false, 'ยืนยันเบิก (หลายรายการ)'); // Hide loading state
+        setButtonLoading('submitIssueBtn', false, 'ยืนยันเบิก (หลายรายการ)');
       }
     };
 
     /**
-     * Handles the submission of multiple receive items.
+     * [MODIFIED] Handles submission of receive items with Flex message.
      */
     document.getElementById('submitReceiveBtn').onclick = async ()=>{
       if(!basketReceive.length) return;
-      setButtonLoading('submitReceiveBtn', true, 'ยืนยันรับเข้า (หลายรายการ)'); // Show loading state
+      setButtonLoading('submitReceiveBtn', true, 'ยืนยันรับเข้า (หลายรายการ)');
       try {
         const now = new Date().toISOString();
-        const itemsToProcess = [...basketReceive]; // Create a copy to iterate
+        const itemsToProcess = [...basketReceive];
 
-        // Perform Firebase database updates
         for(const it of itemsToProcess){
           const key=receiveRef.push().key;
-          await receiveRef.child(key).set({
-            id:key,
-            date:now,
-            timestamp:firebase.database.ServerValue.TIMESTAMP,
-            borrower:actorReceive,
-            userId:userIdLine,
-            itemCode:it.code,
-            itemName:it.name,
-            quantity:it.qty
-          });
-          await stockRef.child(it.code).child('quantity').transaction(c=> (c || 0) + it.qty); // Ensure c is not null/undefined for increment
+          await receiveRef.child(key).set({ id:key, date:now, timestamp:firebase.database.ServerValue.TIMESTAMP, borrower:actorReceive, userId:userIdLine, itemCode:it.code, itemName:it.name, quantity:it.qty });
+          await stockRef.child(it.code).child('quantity').transaction(c=> (c || 0) + it.qty);
         }
 
-        // --- Prepare Text Message for LIFF ---
-        let messageText = "📥 *แจ้งรับเข้าสินค้าหลายรายการ*\n\n";
-        messageText += `ผู้รับเข้า: ${actorReceive}\n\n`;
-        messageText += "รายการรับเข้า:\n";
-        itemsToProcess.forEach(item => {
-            messageText += `- ${item.name} (รหัส: ${item.code}) จำนวน ${item.qty} ชิ้น\n`;
-        });
-        messageText += `\nวันที่/เวลา: ${new Date().toLocaleString('th-TH')}`;
-        // --- End Text Message Preparation ---
+        const flexMessage = createTransactionFlexMessage('receive', actorReceive, itemsToProcess);
+        await liff.sendMessages([flexMessage]);
 
-        await liff.sendMessages([{type: 'text', text: messageText}]);
-        await notifyAdmins('receive', itemsToProcess); // Notify admins via GAS
+        await notifyAdmins('receive', itemsToProcess);
         showAlert('รับเข้าสินค้าเรียบร้อยแล้ว', 'success');
-        basketReceive = []; // Clear basket
-        updateBasket('basketReceive', [], 'submitReceiveBtn'); // Update UI
+        basketReceive = [];
+        updateBasket('basketReceive', [], 'submitReceiveBtn');
       } catch (error) {
         console.error("Error submitting receive: ", error);
         showAlert('เกิดข้อผิดพลาดในการรับเข้าสินค้า: ' + error.message);
       } finally {
-        setButtonLoading('submitReceiveBtn', false, 'ยืนยันรับเข้า (หลายรายการ)'); // Hide loading state
+        setButtonLoading('submitReceiveBtn', false, 'ยืนยันรับเข้า (หลายรายการ)');
       }
     };
 
-    /**
-     * Loads user's history records from Firebase (issue and receive).
-     */
     async function loadHistory(){
       try {
         const [rSnap,iSnap]=await Promise.all([receiveRef.once('value'),issueRef.once('value')]);
         const recs=[];
         rSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'});});
         iSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'});});
-        // Sort by timestamp (if available) or date in descending order
         recs.sort((a,b)=> (new Date(b.timestamp || b.date)).getTime() - (new Date(a.timestamp || a.date)).getTime());
         historyRecords=recs; historyPage=1; renderHistory();
       } catch (error) {
@@ -678,14 +643,11 @@
       }
     }
 
-    /**
-     * Renders the current page of history records into the table.
-     */
     function renderHistory(){
       const start=(historyPage-1)*pageSize;
       const page=historyRecords.slice(start,start+pageSize);
       const tbody=document.getElementById('historyTable');
-      tbody.innerHTML=''; // Clear existing rows
+      tbody.innerHTML='';
       
       if (page.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">ไม่พบประวัติการทำรายการ</td></tr>`;
@@ -703,25 +665,18 @@
         });
       }
 
-      // Update pagination info and button states
       const total=Math.max(1,Math.ceil(historyRecords.length/pageSize));
       document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
       document.getElementById('historyPrev').disabled = historyPage===1;
       document.getElementById('historyNext').disabled = historyPage===total;
     }
 
-    // Pagination button event listeners
     document.getElementById('historyPrev').onclick=()=>{if(historyPage>1){historyPage--;renderHistory();}};
     document.getElementById('historyNext').onclick=()=>{const t=Math.ceil(historyRecords.length/pageSize);if(historyPage<t){historyPage++;renderHistory();}};
     
-    // Tab switching logic
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('#tabIssue, #tabReceive, #tabHistory');
 
-    /**
-     * Activates the specified tab and hides others.
-     * @param {'issue' | 'receive' | 'history'} tabName - The name of the tab to activate.
-     */
     function activateTab(tabName){
       tabButtons.forEach(btn => {
         btn.classList.remove('active', 'border-primary', 'text-primary', 'font-semibold');
@@ -741,16 +696,14 @@
         document.getElementById('tabHistory').classList.remove('hidden');
         document.getElementById('tabHistoryBtn').classList.add('active', 'border-primary', 'text-primary', 'font-semibold');
         document.getElementById('tabHistoryBtn').classList.remove('border-transparent', 'text-gray-600');
-        loadHistory(); // Load history when history tab is activated
+        loadHistory();
       }
     }
 
-    // Tab button event listeners
     document.getElementById('tabIssueBtn').onclick   = ()=>activateTab('issue');
     document.getElementById('tabReceiveBtn').onclick = ()=>activateTab('receive');
     document.getElementById('tabHistoryBtn').onclick = ()=>activateTab('history');
 
-    // Initial LIFF initialization and tab activation
     liffInit().then(() => activateTab('issue'));
   </script>
 </body>

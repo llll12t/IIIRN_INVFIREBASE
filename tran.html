@@ -25,12 +25,14 @@
         extend: {
           colors: {
             primary: { // Custom primary color
-              light: '#287040', // Light shade of the main green
-              DEFAULT: '#174D27', // The main dark green
-              dark: '#123C1F',    // Darker shade of the main green
+              light: '#60A5FA', // Blue-300
+              DEFAULT: '#3B82F6', // Blue-500
+              dark: '#2563EB',  // Blue-700
             },
-            secondary: { // Secondary color for subtle accents/backgrounds
-              DEFAULT: '#CADEC3', // Light, muted green
+            secondary: { // A secondary color for accents if needed
+              light: '#A78BFA', // Purple-300
+              DEFAULT: '#8B5CF6', // Purple-500
+              dark: '#7C3AED',  // Purple-700
             }
           },
           fontFamily: {
@@ -95,7 +97,7 @@
   </style>
 </head>
 
-<body class="bg-gray-100 flex items-center justify-center p-4">
+<body class="bg-gray-100  flex items-center justify-center p-4">
 
   <!-- Custom Alert Notification -->
   <div id="customAlert"
@@ -106,7 +108,7 @@
     <span id="alertMessage"></span>
   </div>
 
-  <div class="w-full max-w-md mx-auto bg-white rounded-lg shadow-xl overflow-hidden">
+  <div class="w-full max-w-md mx-auto  overflow-hidden">
     <!-- Tabs -->
     <div class="flex border-b border-gray-200 bg-gray-50">
       <button id="tabIssueBtn"
@@ -144,7 +146,8 @@
         <datalist id="inventoryList"></datalist>
         <ul id="basketIssue" class="space-y-3 mb-4"></ul>
 
-        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-4 items-center">
+        <!-- Manual input for Issue tab -->
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-2 mb-2 items-center">
           <input list="inventoryList" id="manualCodeIssue" placeholder="รหัสหรือชื่อสินค้า"
             class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
           <div class="flex items-center space-x-2 w-full sm:w-auto">
@@ -153,10 +156,11 @@
             <span id="issueCurrentStockDisplay" class="text-sm text-gray-600 whitespace-nowrap"></span>
           </div>
           <button id="addIssueBtn"
-            class="w-full sm:w-auto bg-primary-DEFAULT hover:bg-primary-dark text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary-light focus:ring-opacity-75">
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 w-full sm:w-auto">
             เพิ่ม
           </button>
         </div>
+
 
         <button id="submitIssueBtn"
           class="w-full bg-red-600 hover:bg-red-700 text-white mt-4 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
@@ -193,7 +197,8 @@
         <datalist id="inventoryList2"></datalist>
         <ul id="basketReceive" class="space-y-3 mb-4"></ul>
 
-        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-4 items-center">
+        <!-- Manual input for Receive tab -->
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-2 mb-6 items-center">
           <input list="inventoryList2" id="manualCodeReceive" placeholder="รหัสหรือชื่อสินค้า"
             class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
           <div class="flex items-center space-x-2 w-full sm:w-auto">
@@ -202,7 +207,7 @@
             <span id="receiveCurrentStockDisplay" class="text-sm text-gray-600 whitespace-nowrap"></span>
           </div>
           <button id="addReceiveBtn"
-            class="w-full sm:w-auto bg-primary-DEFAULT hover:bg-primary-dark text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary-light focus:ring-opacity-75">
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 w-full sm:w-auto">
             เพิ่ม
           </button>
         </div>
@@ -262,8 +267,10 @@
   <script>
     // Configuration constants
     const LIFF_ID = '2007335399-rmoYp9Md'; // Replace with your LIFF ID
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; // Replace with your Google Apps Script URL
-    const LIFF_WEB_URL = 'https://liff.line.me/2007335399-rmoYp9Md'; // URL ของ LIFF Web App ของคุณเอง (สำหรับปุ่มใน Flex Message)
+    // ** IMPORTANT: REPLACE THIS URL with your deployed Google Apps Script URL **
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
+    // URL ของ LIFF Web App ของคุณเอง (สำหรับปุ่มใน Flex Message ที่จะส่งให้ผู้ใช้และ Admin)
+    const LIFF_WEB_URL = 'https://liff.line.me/2007335399-rmoYp9Md';
 
     // Firebase references (assuming db is initialized in firebase-config.js)
     const stockRef = db.ref('stock');
@@ -275,8 +282,10 @@
     let userIdLine = '';
     let actorIssue = '';
     let actorReceive = '';
-    let basketIssue = [];
-    let basketReceive = [];
+    let basketIssue = []; // Array to hold items for issuing
+    let basketReceive = []; // Array to hold items for receiving
+    let allInventoryItems = {}; // Cache for all inventory items (code -> {name, quantity})
+
     let historyRecords = [];
     let historyPage = 1;
     const pageSize = 15; // Items per page for history
@@ -400,40 +409,36 @@
         document.getElementById('actorIssue').textContent = actorIssue;
         document.getElementById('actorReceive').textContent = actorReceive;
 
+        // Load all inventory items into allInventoryItems cache and update datalists
         const snapStock = await stockRef.once('value');
         snapStock.forEach(ch => {
           const d = ch.val();
+          allInventoryItems[d.code] = { name: d.name, quantity: d.quantity || 0 }; // Cache item data
           ['inventoryList', 'inventoryList2'].forEach(id => {
             // Display current stock in datalist options (e.g., "CODE - NAME (คงเหลือ: 10)")
             document.getElementById(id).insertAdjacentHTML('beforeend',
-              `<option value="${d.code} ‒ ${d.name}" data-stock="${d.quantity || 0}">${d.code} ‒ ${d.name} (คงเหลือ: ${d.quantity || 0})</option>`);
+              `<option value="${d.code} ‒ ${d.name}" data-code="${d.code}" data-name="${d.name}" data-stock="${d.quantity || 0}">${d.code} ‒ ${d.name} (คงเหลือ: ${d.quantity || 0})</option>`);
           });
         });
       } catch (err) {
         console.error("LIFF initialization failed: ", err);
         showAlert('เกิดข้อผิดพลาดในการเริ่มต้น LIFF: ' + err.message);
-        // If LIFF fails, ensure LIFF functions are still callable for testing/debug
-        // and prevent app from crashing entirely.
-        if (liff && liff.isInClient() && liff.closeWindow) {
-             liff.closeWindow();
-        }
       }
     }
 
     /**
      * Sets up QR scanning functionality for a given button and video elements.
-     * When QR is scanned, it populates the manual input fields,
-     * allowing the user to specify quantity before adding.
      * @param {string} btnId - The ID of the button that triggers scanning.
      * @param {string} videoId - The ID of the <video> element for camera feed.
      * @param {string} containerId - The ID of the container for the video element.
-     * @param {'issue' | 'receive'} listKey - Determines which manual input fields to populate.
+     * @param {'issue' | 'receive'} listKey - Determines which basket (issue/receive) to add to.
      */
     function setupScan(btnId, videoId, containerId, listKey) {
       document.getElementById(btnId).onclick = async () => {
         const video = document.getElementById(videoId);
         const videoContainer = document.getElementById(containerId);
         let stream = null;
+        let scanning = true;
 
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -445,38 +450,27 @@
           const ctx = canvas.getContext('2d');
 
           function scan() {
-            if (!video.srcObject) { // Stop scanning if stream is no longer active
-                return;
+            if (!scanning || video.readyState !== video.HAVE_ENOUGH_DATA) {
+              if (scanning) requestAnimationFrame(scan); // Keep scanning if readyState not enough
+              return;
             }
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              ctx.drawImage(video, 0, 0);
-              const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
-              if (code) {
-                // Stop camera and hide video
-                stream.getTracks().forEach(t => t.stop());
-                videoContainer.classList.add('hidden');
 
-                const scannedCode = code.data.trim();
-                const itemSnap = await stockRef.child(scannedCode).get();
-                if (itemSnap.exists()) {
-                  const item = itemSnap.val();
-                  const manualCodeInput = document.getElementById(listKey === 'issue' ? 'manualCodeIssue' : 'manualCodeReceive');
-                  const manualQtyInput = document.getElementById(listKey === 'issue' ? 'manualQtyIssue' : 'manualQtyReceive');
-                  const stockDisplay = document.getElementById(listKey === 'issue' ? 'issueCurrentStockDisplay' : 'receiveCurrentStockDisplay');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height); // Draw frame from video to canvas
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); // Get image data
 
-                  manualCodeInput.value = `${item.code} ‒ ${item.name}`;
-                  manualQtyInput.value = '1'; // Default quantity is 1
-                  updateStockDisplay(manualCodeInput.id, stockDisplay.id); // Update stock display for this item
-                  showAlert(`สแกนสินค้า "${item.name}" สำเร็จ! กรุณาระบุจำนวนแล้วกด 'เพิ่ม'`, 'success');
-                } else {
-                  showAlert(`ไม่พบสินค้าสำหรับ QR Code: ${scannedCode}`, 'error');
-                }
-                return; // Stop scanning process
-              }
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+            if (code) {
+              scanning = false; // Stop scanning after first successful scan
+              addToBasket(listKey, code.data.trim(), 1, 'scan'); // Add with default quantity 1 for QR
+              if (stream) stream.getTracks().forEach(t => t.stop());
+              videoContainer.classList.add('hidden');
+              showAlert('สแกนสำเร็จ!', 'success');
+              return;
             }
-            requestAnimationFrame(scan);
+            requestAnimationFrame(scan); // Continue scanning
           }
           scan();
         } catch (err) {
@@ -484,6 +478,7 @@
           showAlert('ไม่สามารถเข้าถึงกล้องได้ โปรดตรวจสอบสิทธิ์การเข้าถึงกล้อง');
           if (stream) stream.getTracks().forEach(t => t.stop());
           videoContainer.classList.add('hidden');
+          scanning = false;
         }
       };
     }
@@ -495,30 +490,31 @@
      * @param {string} inputElementId - ID of the item code/name input field.
      * @param {string} displayElementId - ID of the span where stock should be displayed.
      */
-    async function updateStockDisplay(inputElementId, displayElementId) {
+    function updateStockDisplay(inputElementId, displayElementId) {
       const inputElement = document.getElementById(inputElementId);
       const displayElement = document.getElementById(displayElementId);
       const enteredValue = inputElement.value.trim();
 
+      displayElement.textContent = ''; // Clear previous display
+      displayElement.classList.remove('text-red-500'); // Reset color
+
       if (enteredValue === '') {
-        displayElement.textContent = '';
         return;
       }
 
-      const code = enteredValue.split(' ‒ ')[0];
-      const snap = await stockRef.child(code).get();
+      // Try to find the item based on code or "code ‒ name" format
+      let itemCode = enteredValue.split(' ‒ ')[0]; // Extract code if format is "CODE ‒ NAME"
+      const itemData = allInventoryItems[itemCode];
 
-      if (snap.exists()) {
-        const itemData = snap.val();
+      if (itemData) {
         const currentStock = itemData.quantity || 0;
         displayElement.textContent = `(คงเหลือ: ${currentStock})`;
-        displayElement.classList.remove('text-red-500'); // Reset color
         if (currentStock === 0) {
           displayElement.classList.add('text-red-500'); // Highlight if zero stock
         }
       } else {
         displayElement.textContent = '(ไม่พบสินค้า)';
-        displayElement.classList.remove('text-red-500');
+        // No item data, clear stock display.
       }
     }
 
@@ -532,48 +528,56 @@
      * @param {'issue' | 'receive'} key - Determines which basket to add to.
      * @param {string} code - The item code to add.
      * @param {number} qtyToAdd - The quantity to add/set for the item.
+     * @param {'scan' | 'manual'} sourceType - Indicates if item was added via scan or manual input.
      */
-    async function addToBasket(key, code, qtyToAdd) {
-      const snap = await stockRef.child(code).get();
-      if (!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`);
-        return false; // Indicate failure
+    async function addToBasket(key, code, qtyToAdd, sourceType) {
+      const d = allInventoryItems[code]; // Get item data from cached inventory
+      if (!d) {
+        showAlert(`ไม่พบสินค้า "${code}"`, 'error');
+        return;
       }
-      const d = snap.val();
-      const currentStock = d.quantity || 0; // Get current stock quantity
+
+      const currentStock = d.quantity || 0;
       const target = key === 'issue' ? basketIssue : basketReceive;
       const existingItem = target.find(x => x.code === code);
 
       if (existingItem) {
-        // If item exists, update its quantity (increment for QR, set for manual)
-        if (key === 'issue') {
-          // For issue, check if new total quantity exceeds current stock
-          // This logic now supports setting quantity directly from input, not just incrementing.
-          if (qtyToAdd > currentStock) {
-            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
-            return false;
+        if (sourceType === 'scan') {
+          // For QR scan, always increment by 1
+          const potentialNewQty = existingItem.qty + qtyToAdd;
+          if (key === 'issue' && potentialNewQty > currentStock) {
+            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (ในตะกร้ามีแล้ว ${existingItem.qty} ชิ้น)`, 'error');
+            return;
           }
-          existingItem.qty = qtyToAdd; // Set quantity to what was entered
-          showAlert(`อัปเดตจำนวนสินค้า "${d.name}" ในตะกร้าเป็น ${existingItem.qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
-        } else { // Receive
-          existingItem.qty = qtyToAdd; // Set quantity to what was entered
-          showAlert(`อัปเดตจำนวนสินค้า "${d.name}" ในตะกร้าเป็น ${existingItem.qty} ชิ้น`, 'success');
+          existingItem.qty = potentialNewQty;
+          showAlert(`เพิ่มสินค้า "${d.name}" ในตะกร้าอีก ${qtyToAdd} ชิ้น รวมเป็น ${existingItem.qty} ชิ้น`, 'success');
+        } else { // sourceType === 'manual'
+          // For manual input, set the quantity to the new value if it's different
+          if (key === 'issue' && qtyToAdd > currentStock) {
+            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
+            return;
+          }
+          if (existingItem.qty !== qtyToAdd) {
+            existingItem.qty = qtyToAdd;
+            showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qtyToAdd} ชิ้นในตะกร้า`, 'success');
+          } else {
+            showAlert(`สินค้า "${d.name}" จำนวน ${qtyToAdd} ชิ้น อยู่ในตะกร้าแล้ว`, 'info'); // 'info' is a conceptual type, just a message
+          }
         }
       } else {
         // If new item, add to basket
         if (key === 'issue' && qtyToAdd > currentStock) {
-          showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (คงเหลือ: ${currentStock})`, 'error');
-          return false;
+          showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
+          return;
         }
         target.push({ code, name: d.name, qty: qtyToAdd });
-        showAlert(`เพิ่มสินค้า "${d.name}" จำนวน ${qtyToAdd} ชิ้น เข้าตะกร้า (คงเหลือ: ${currentStock})`, 'success');
+        showAlert(`เพิ่มสินค้า "${d.name}" จำนวน ${qtyToAdd} ชิ้น เข้าตะกร้า`, 'success');
       }
       updateBasket(key === 'issue' ? 'basketIssue' : 'basketReceive', target, key === 'issue' ? 'submitIssueBtn' : 'submitReceiveBtn');
-      return true; // Indicate success
     }
 
     /**
-     * Handles adding items to the issue basket via manual input (or after scan).
+     * Handles adding items to the issue basket via manual input.
      */
     document.getElementById('addIssueBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeIssue').value.trim();
@@ -583,19 +587,14 @@
       if (!code || qty < 1) {
         return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง', 'error');
       }
-
-      // Call addToBasket, which now handles validation and existing items
-      const success = await addToBasket('issue', code, qty);
-
-      if (success) {
-        document.getElementById('manualCodeIssue').value = ''; // Clear input
-        document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
-        updateStockDisplay('manualCodeIssue', 'issueCurrentStockDisplay'); // Clear stock display
-      }
+      await addToBasket('issue', code, qty, 'manual');
+      document.getElementById('manualCodeIssue').value = ''; // Clear input
+      document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
+      updateStockDisplay('manualCodeIssue', 'issueCurrentStockDisplay'); // Clear stock display
     };
 
     /**
-     * Handles adding items to the receive basket via manual input (or after scan).
+     * Handles adding items to the receive basket via manual input.
      */
     document.getElementById('addReceiveBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeReceive').value.trim();
@@ -605,15 +604,10 @@
       if (!code || qty < 1) {
         return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง', 'error');
       }
-
-      // Call addToBasket, which now handles validation and existing items
-      const success = await addToBasket('receive', code, qty);
-
-      if (success) {
-        document.getElementById('manualCodeReceive').value = ''; // Clear input
-        document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
-        updateStockDisplay('manualCodeReceive', 'receiveCurrentStockDisplay'); // Clear stock display
-      }
+      await addToBasket('receive', code, qty, 'manual');
+      document.getElementById('manualCodeReceive').value = ''; // Clear input
+      document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
+      updateStockDisplay('manualCodeReceive', 'receiveCurrentStockDisplay'); // Clear stock display
     };
 
     /**
@@ -649,17 +643,19 @@
       }));
 
       try {
+        // Using 'no-cors' mode is common for simple GAS web apps, but be aware of its limitations.
+        // If your GAS is set up for proper CORS, you can remove 'mode: "no-cors"'.
         await fetch(GAS_URL, {
           method: 'POST',
-          mode: 'no-cors', // Use 'no-cors' if your GAS is public and doesn't handle CORS.
+          mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action,
             user: userFullName,
             userId: userId,
-            // date will be generated by GAS for consistency with its timezone
             items: simplifiedItems,
-            toList // Send admin IDs to GAS for push messaging
+            toList, // Send admin IDs to GAS for push messaging
+            liffUrl: LIFF_WEB_URL // Pass LIFF URL to GAS for the button
           })
         });
         console.log('Admin notification sent via GAS.');
@@ -670,7 +666,7 @@
 
     /**
      * Generates a Flex Message JSON object based on action, actor, and items.
-     * This function mirrors the logic in your Google Apps Script.
+     * This function mirrors the logic in your Google Apps Script for consistency.
      * @param {'issue' | 'receive'} action - The type of action.
      * @param {string} actorName - The name of the person performing the action.
      * @param {Array<Object>} items - The array of items in the basket.
@@ -784,8 +780,10 @@
 
         // --- Pre-check stock availability for all items before starting any Firebase writes ---
         const stockCheckPromises = itemsToProcess.map(async item => {
-          const snap = await stockRef.child(item.code).child('quantity').get();
-          const currentStock = snap.exists() ? snap.val() : 0;
+          // Use cached data for quick check, but re-fetch for absolute real-time (can be slow for many items)
+          // For simplicity and speed, we will use the cached `allInventoryItems` data.
+          // If a highly concurrent environment is expected, you might want to re-fetch or use Firebase transactions more broadly.
+          const currentStock = allInventoryItems[item.code] ? allInventoryItems[item.code].quantity : 0;
           if (item.qty > currentStock) {
             return { error: true, item, currentStock };
           }
@@ -815,14 +813,19 @@
             itemName: it.name,
             quantity: it.qty
           });
-          // Decrement stock, we've already pre-checked for sufficiency
+          // Decrement stock using transaction, we've already pre-checked for sufficiency
           await stockRef.child(it.code).child('quantity').transaction(c => (c || 0) - it.qty);
+          // Also update the cached quantity for future checks in this session
+          if(allInventoryItems[it.code]) {
+            allInventoryItems[it.code].quantity = (allInventoryItems[it.code].quantity || 0) - it.qty;
+          }
         }
 
         // --- Create Flex Message for LIFF (for user themselves) ---
         const flexMessageBubble = createFlexMessageContent('issue', actorIssue, itemsToProcess);
 
         // Send Flex Message via LIFF to the user themselves
+        // liff.sendMessages returns a promise. You should await it to ensure it completes before showing success alert.
         await liff.sendMessages([{ type: 'flex', altText: '📤 แจ้งเบิกสินค้า', contents: flexMessageBubble }]);
 
         // Notify admins via GAS (GAS will also generate and send a Flex Message to admins)
@@ -863,6 +866,10 @@
             quantity: it.qty
           });
           await stockRef.child(it.code).child('quantity').transaction(c => (c || 0) + it.qty); // Ensure c is not null/undefined for increment
+          // Also update the cached quantity
+          if(allInventoryItems[it.code]) {
+            allInventoryItems[it.code].quantity = (allInventoryItems[it.code].quantity || 0) + it.qty;
+          }
         }
 
         // --- Create Flex Message for LIFF (for user themselves) ---
@@ -975,16 +982,8 @@
     document.getElementById('tabReceiveBtn').onclick = () => activateTab('receive');
     document.getElementById('tabHistoryBtn').onclick = () => activateTab('history');
 
-    // Initial LIFF initialization and tab activation (Wrapped in async IIFE)
-    (async () => {
-      try {
-        await liffInit();
-        activateTab('issue'); // Activate issue tab after LIFF init is complete
-      } catch (e) {
-        console.error("Initialization failed: ", e);
-        showAlert("เกิดข้อผิดพลาดในการเริ่มต้นแอปพลิเคชัน: " + e.message, "error");
-      }
-    })();
+    // Initial LIFF initialization and tab activation
+    liffInit().then(() => activateTab('issue'));
   </script>
 </body>
 

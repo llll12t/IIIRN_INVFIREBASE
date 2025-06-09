@@ -2,9 +2,9 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>ระบบคลังสินค้า (เบิก/รับหลายรายการ + ประวัติ)</title>
+  <title>ระบบคลังสินค้าอัจฉริยะ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -13,92 +13,193 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <!-- jsQR for QR scanning -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
-    <script src="firebase-config.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { // Custom primary color
+              light: '#60A5FA', // Blue-300
+              DEFAULT: '#3B82F6', // Blue-500
+              dark: '#2563EB',  // Blue-700
+            },
+            secondary: { // A secondary color for accents if needed
+              light: '#A78BFA', // Purple-300
+              DEFAULT: '#8B5CF6', // Purple-500
+              dark: '#7C3AED',  // Purple-700
+            }
+          }
+        }
+      }
+    }
+  </script>
 
   <style>
-    #customAlert { transition: opacity .3s; opacity: 0; }
-    #customAlert.show { opacity: 1; }
-  </style>
-  
-</head>
-<body class="bg-gray-100 min-h-screen font-sans">
+    body {
+      font-family: 'Sukhumvit Set', 'Kanit', sans-serif; /* Example Thai fonts, adjust as needed */
+    }
+    /* Custom Alert Styles */
+    #customAlert {
+      transition: all 0.3s ease-in-out;
+      transform: translateX(100%); /* Start off-screen to the right */
+      opacity: 0;
+    }
+    #customAlert.show {
+      transform: translateX(0); /* Slide in */
+      opacity: 1;
+    }
+    #customAlert.success {
+      background-color: #10B981; /* Green-500 */
+    }
+    #customAlert.error {
+      background-color: #EF4444; /* Red-500 */
+    }
 
-  <!-- Alert -->
+    /* Spinner animation for loading states */
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #fff;
+      border-radius: 50%;
+      width: 1.5rem;
+      height: 1.5rem;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Specific styles for active tab border */
+    .tab-button.active {
+      border-color: var(--tw-colors-primary-DEFAULT); /* Use the primary color defined in Tailwind config */
+      color: var(--tw-colors-primary-DEFAULT);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+  <!-- Custom Alert Notification -->
   <div id="customAlert"
-       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow z-50">
+       class="fixed top-6 right-6 w-fit max-w-sm text-white px-5 py-3 rounded-lg shadow-xl text-center z-50 flex items-center justify-center space-x-2">
+    <svg id="alertIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+      <!-- Icon will be dynamically updated -->
+    </svg>
+    <span id="alertMessage"></span>
   </div>
 
-  <div class="max-w-lg mx-auto p-6 space-y-6 bg-white rounded-lg mt-10">
+  <div class="w-full max-w-lg mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
     <!-- Tabs -->
-    <div class="flex mb-4 border-b">
-      <button id="tabIssueBtn"   class="flex-1 py-2 text-center border-b-2 border-primary font-semibold">เบิก</button>
-      <button id="tabReceiveBtn" class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">รับเข้า</button>
-      <button id="tabHistoryBtn" class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">ประวัติ</button>
+    <div class="flex border-b border-gray-200 bg-gray-50">
+      <button id="tabIssueBtn"   class="tab-button flex-1 py-3 text-center border-b-2 border-primary active font-semibold text-primary transition-colors duration-200">เบิก</button>
+      <button id="tabReceiveBtn" class="tab-button flex-1 py-3 text-center border-b-2 border-transparent text-gray-600 hover:text-primary hover:border-primary transition-colors duration-200">รับเข้า</button>
+      <button id="tabHistoryBtn" class="tab-button flex-1 py-3 text-center border-b-2 border-transparent text-gray-600 hover:text-primary hover:border-primary transition-colors duration-200">ประวัติ</button>
     </div>
 
-    <!-- เบิก (หลายรายการ) -->
-    <div id="tabIssue">
-      <div class="text-center mb-4">
-        <h2 class="text-lg font-bold">เบิกสินค้าหลายรายการ</h2>
-        <p>ผู้เบิก: <span id="actorIssue" class="font-semibold">–</span></p>
-      </div>
-      <button id="scanIssueBtn" class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-        สแกน QR เพื่อเพิ่มรายการ
-      </button>
-      <video id="videoIssue" playsinline class="w-full h-48 object-cover rounded hidden mb-4"></video>
-      <datalist id="inventoryList"></datalist>
-      <ul id="basketIssue" class="space-y-2 mb-4"></ul>
-      <div class="flex space-x-2 mb-4">
-        <input list="inventoryList" id="manualCodeIssue" placeholder="รหัสหรือชื่อสินค้า" class="flex-1 border rounded p-2" />
-        <input type="number" id="manualQtyIssue" min="1" value="1" class="w-20 border rounded p-2" />
-        <button id="addIssueBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่ม</button>
-      </div>
-      <button id="submitIssueBtn" class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded disabled:opacity-50" disabled>
-        ยืนยันเบิก (หลายรายการ)
-      </button>
-    </div>
+    <div class="p-6 space-y-6">
+      <!-- เบิก (หลายรายการ) -->
+      <div id="tabIssue">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-extrabold text-gray-800">เบิกสินค้าหลายรายการ</h2>
+          <p class="text-gray-600 mt-2">ผู้เบิก: <span id="actorIssue" class="font-semibold text-primary">–</span></p>
+        </div>
 
-    <!-- รับเข้า (หลายรายการ) -->
-    <div id="tabReceive" class="hidden">
-      <div class="text-center mb-4">
-        <h2 class="text-lg font-bold">รับเข้าสินค้าหลายรายการ</h2>
-        <p>ผู้รับเข้า: <span id="actorReceive" class="font-semibold">–</span></p>
-      </div>
-      <button id="scanReceiveBtn" class="w-full mb-4 bg-green-600 hover:bg-green-500 text-white py-2 rounded">
-        สแกน QR เพื่อเพิ่มรายการ
-      </button>
-      <video id="videoReceive" playsinline class="w-full h-48 object-cover rounded hidden mb-4"></video>
-      <datalist id="inventoryList2"></datalist>
-      <ul id="basketReceive" class="space-y-2 mb-4"></ul>
-      <div class="flex space-x-2 mb-4">
-        <input list="inventoryList2" id="manualCodeReceive" placeholder="รหัสหรือชื่อสินค้า" class="flex-1 border rounded p-2" />
-        <input type="number" id="manualQtyReceive" min="1" value="1" class="w-20 border rounded p-2" />
-        <button id="addReceiveBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่ม</button>
-      </div>
-      <button id="submitReceiveBtn" class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded disabled:opacity-50" disabled>
-        ยืนยันรับเข้า (หลายรายการ)
-      </button>
-    </div>
+        <button id="scanIssueBtn" class="w-full mb-4 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 flex items-center justify-center space-x-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>สแกน QR เพื่อเพิ่มรายการ</span>
+        </button>
 
-    <!-- ประวัติ -->
-    <div id="tabHistory" class="hidden">
-      <div class="overflow-x-auto bg-white rounded shadow mb-2">
-        <table class="min-w-full text-left">
-          <thead class="bg-gray-200">
-            <tr>
-              <th class="px-4 py-2">วันที่/เวลา</th>
-              <th class="px-4 py-2">ประเภท</th>
-              <th class="px-4 py-2">รหัส-ชื่อ</th>
-              <th class="px-4 py-2">จำนวน</th>
-            </tr>
-          </thead>
-          <tbody id="historyTable" class="divide-y"></tbody>
-        </table>
+        <div id="videoIssueContainer" class="relative w-full h-48 bg-gray-200 rounded-lg overflow-hidden hidden mb-4">
+          <video id="videoIssue" playsinline class="w-full h-full object-cover"></video>
+          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-lg font-bold">
+            วาง QR Code ในกรอบ
+          </div>
+        </div>
+
+        <datalist id="inventoryList"></datalist>
+        <ul id="basketIssue" class="space-y-3 mb-4"></ul>
+
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6">
+          <input list="inventoryList" id="manualCodeIssue" placeholder="รหัสหรือชื่อสินค้า" class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+          <input type="number" id="manualQtyIssue" min="1" value="1" class="w-full sm:w-24 border border-gray-300 rounded-lg p-3 text-center focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+          <button id="addIssueBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+            เพิ่ม
+          </button>
+        </div>
+
+        <button id="submitIssueBtn" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none" disabled>
+          <span id="issueBtnText">ยืนยันเบิก (หลายรายการ)</span>
+          <span id="issueBtnSpinner" class="spinner ml-2 hidden"></span>
+        </button>
       </div>
-      <div class="flex justify-between items-center">
-        <button id="historyPrev" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50" disabled>ก่อนหน้า</button>
-        <span id="historyPageInfo" class="text-sm text-gray-600">หน้าที่ 1 จาก 1</span>
-        <button id="historyNext" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50" disabled>ถัดไป</button>
+
+      <!-- รับเข้า (หลายรายการ) -->
+      <div id="tabReceive" class="hidden">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-extrabold text-gray-800">รับเข้าสินค้าหลายรายการ</h2>
+          <p class="text-gray-600 mt-2">ผู้รับเข้า: <span id="actorReceive" class="font-semibold text-primary">–</span></p>
+        </div>
+
+        <button id="scanReceiveBtn" class="w-full mb-4 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 flex items-center justify-center space-x-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+          <span>สแกน QR เพื่อเพิ่มรายการ</span>
+        </button>
+
+        <div id="videoReceiveContainer" class="relative w-full h-48 bg-gray-200 rounded-lg overflow-hidden hidden mb-4">
+          <video id="videoReceive" playsinline class="w-full h-full object-cover"></video>
+          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white text-lg font-bold">
+            วาง QR Code ในกรอบ
+          </div>
+        </div>
+
+        <datalist id="inventoryList2"></datalist>
+        <ul id="basketReceive" class="space-y-3 mb-4"></ul>
+
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6">
+          <input list="inventoryList2" id="manualCodeReceive" placeholder="รหัสหรือชื่อสินค้า" class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+          <input type="number" id="manualQtyReceive" min="1" value="1" class="w-full sm:w-24 border border-gray-300 rounded-lg p-3 text-center focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+          <button id="addReceiveBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+            เพิ่ม
+          </button>
+        </div>
+
+        <button id="submitReceiveBtn" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none" disabled>
+          <span id="receiveBtnText">ยืนยันรับเข้า (หลายรายการ)</span>
+          <span id="receiveBtnSpinner" class="spinner ml-2 hidden"></span>
+        </button>
+      </div>
+
+      <!-- ประวัติ -->
+      <div id="tabHistory" class="hidden">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-extrabold text-gray-800">ประวัติการทำรายการ</h2>
+          <p class="text-gray-600 mt-2">รายการล่าสุดของคุณ</p>
+        </div>
+        <div class="overflow-x-auto bg-white rounded-lg shadow-md mb-4 border border-gray-200">
+          <table class="min-w-full text-left">
+            <thead class="bg-gray-100 border-b border-gray-200">
+              <tr>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-700">วันที่/เวลา</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-700">ประเภท</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-700">รหัส-ชื่อ</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-700">จำนวน</th>
+              </tr>
+            </thead>
+            <tbody id="historyTable" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+        <div class="flex justify-between items-center px-2 py-2">
+          <button id="historyPrev" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:pointer-events-none" disabled>
+            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            ก่อนหน้า
+          </button>
+          <span id="historyPageInfo" class="text-sm text-gray-600 font-medium">หน้าที่ 1 จาก 1</span>
+          <button id="historyNext" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:pointer-events-none" disabled>
+            ถัดไป
+            <svg class="w-4 h-4 inline-block ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -120,100 +221,217 @@
     let historyPage     = 1;
     const pageSize      = 15;
 
-    function showAlert(msg){
-      const a = document.getElementById('customAlert');
-      a.textContent = msg;
-      a.classList.add('show');
-      setTimeout(()=>a.classList.remove('show'),2000);
+    // --- UI Helper Functions ---
+    const customAlert = document.getElementById('customAlert');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertIcon = document.getElementById('alertIcon');
+
+    function showAlert(msg, type = 'error'){ // type: 'success' or 'error'
+      alertMessage.textContent = msg;
+      customAlert.classList.remove('success', 'error');
+      customAlert.classList.add(type);
+
+      // Set icon based on type
+      if (type === 'success') {
+        alertIcon.innerHTML = `<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>`;
+      } else { // error
+        alertIcon.innerHTML = `<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>`;
+      }
+
+      customAlert.classList.add('show');
+      setTimeout(() => customAlert.classList.remove('show'), 3000); // Auto-dismiss after 3 seconds
     }
+
+    function setButtonLoading(buttonId, isLoading, originalText) {
+        const button = document.getElementById(buttonId);
+        const btnText = document.getElementById(`${buttonId.replace('submit', '')}BtnText`);
+        const btnSpinner = document.getElementById(`${buttonId.replace('submit', '')}BtnSpinner`);
+
+        if (isLoading) {
+            button.disabled = true;
+            btnText.textContent = 'กำลังส่ง...';
+            btnSpinner.classList.remove('hidden');
+        } else {
+            button.disabled = false;
+            btnText.textContent = originalText;
+            btnSpinner.classList.add('hidden');
+        }
+    }
+
 
     function updateBasket(listId, basket, btnId){
       document.getElementById(listId).innerHTML = basket.map(it=>`
-        <li class="flex justify-between items-center bg-gray-50 p-2 rounded">
-          <span>${it.code} – ${it.name} × ${it.qty}</span>
-          <button onclick="removeFromBasket('${listId}','${it.code}','${btnId}')" class="text-red-500 font-bold">×</button>
+        <li class="flex justify-between items-center bg-gray-50 p-3 rounded-lg shadow-sm border border-gray-100">
+          <div class="flex-grow">
+            <span class="text-sm font-medium text-gray-800">${it.code}</span>
+            <span class="block text-md text-gray-700">${it.name} × <span class="font-bold">${it.qty}</span></span>
+          </div>
+          <button onclick="removeFromBasket('${listId}','${it.code}','${btnId}')" class="text-red-500 text-lg font-bold hover:text-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 rounded-full px-2">
+            ×
+          </button>
         </li>`).join('');
-      document.getElementById(btnId).disabled = basket.length===0;
+      document.getElementById(btnId).disabled = basket.length === 0;
     }
-    window.removeFromBasket = (listId,code,btnId) => {
-      if(listId==='basketIssue') basketIssue = basketIssue.filter(x=>x.code!==code), updateBasket('basketIssue',basketIssue,'submitIssueBtn');
-      else                     basketReceive = basketReceive.filter(x=>x.code!==code), updateBasket('basketReceive',basketReceive,'submitReceiveBtn');
+    window.removeFromBasket = (listId, code, btnId) => {
+      if(listId==='basketIssue') {
+        basketIssue = basketIssue.filter(x => x.code !== code);
+        updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
+      } else {
+        basketReceive = basketReceive.filter(x => x.code !== code);
+        updateBasket('basketReceive', basketReceive, 'submitReceiveBtn');
+      }
     };
 
     async function liffInit(){
-      await liff.init({ liffId: LIFF_ID });
-      if(!liff.isLoggedIn()) await liff.login();
-      const prof = await liff.getProfile();
-      userIdLine = prof.userId;
-      const snapIssue = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
-      actorIssue   = snapIssue.exists()? Object.values(snapIssue.val())[0].fullName : 'ไม่ทราบชื่อ';
-      actorReceive = actorIssue;
-      document.getElementById('actorIssue').textContent   = actorIssue;
-      document.getElementById('actorReceive').textContent = actorReceive;
-      const snapStock = await stockRef.once('value');
-      snapStock.forEach(ch=>{
-        const d = ch.val();
-        ['inventoryList','inventoryList2'].forEach(id=>{
-          document.getElementById(id).insertAdjacentHTML('beforeend',`<option value="${d.code} ‒ ${d.name}">`);
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if(!liff.isLoggedIn()) {
+          await liff.login();
+        }
+        const prof = await liff.getProfile();
+        userIdLine = prof.userId;
+
+        const snapIssue = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
+        actorIssue   = snapIssue.exists()? Object.values(snapIssue.val())[0].fullName : 'ไม่ทราบชื่อ';
+        actorReceive = actorIssue; // Assuming same actor for both issue and receive
+
+        document.getElementById('actorIssue').textContent   = actorIssue;
+        document.getElementById('actorReceive').textContent = actorReceive;
+
+        const snapStock = await stockRef.once('value');
+        snapStock.forEach(ch=>{
+          const d = ch.val();
+          ['inventoryList','inventoryList2'].forEach(id=>{
+            document.getElementById(id).insertAdjacentHTML('beforeend',`<option value="${d.code} ‒ ${d.name}">`);
+          });
         });
-      });
+      } catch (err) {
+        console.error("LIFF initialization failed: ", err);
+        showAlert('เกิดข้อผิดพลาดในการเริ่มต้น LIFF: ' + err.message);
+      }
     }
 
-    function setupScan(btnId,videoId,listKey){
+    function setupScan(btnId, videoId, containerId, listKey){
       document.getElementById(btnId).onclick = async ()=>{
         const video = document.getElementById(videoId);
+        const videoContainer = document.getElementById(containerId);
+        let stream = null; // Declare stream here to make it accessible for stopping
+
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
-          video.srcObject = stream; video.play(); video.classList.remove('hidden');
-          const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
-          (function scan(){
+          stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
+          video.srcObject = stream;
+          video.play();
+          videoContainer.classList.remove('hidden');
+
+          const canvas=document.createElement('canvas');
+          const ctx=canvas.getContext('2d');
+
+          function scan(){
             if(video.readyState===video.HAVE_ENOUGH_DATA){
-              canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+              canvas.width=video.videoWidth;
+              canvas.height=video.videoHeight;
               ctx.drawImage(video,0,0);
               const code=jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
               if(code){
                 addToBasket(listKey,code.data.trim());
-                stream.getTracks().forEach(t=>t.stop());
-                video.classList.add('hidden');
-                return;
+                stream.getTracks().forEach(t=>t.stop()); // Stop camera
+                videoContainer.classList.add('hidden');
+                showAlert('สแกนสำเร็จ!', 'success');
+                return; // Stop scanning
               }
             }
             requestAnimationFrame(scan);
-          })();
-        } catch {
-          showAlert('ไม่สามารถเข้าถึงกล้องได้');
+          }
+          scan(); // Start the scan loop
+        } catch (err) {
+          console.error("Camera access error: ", err);
+          showAlert('ไม่สามารถเข้าถึงกล้องได้ โปรดตรวจสอบสิทธิ์การเข้าถึงกล้อง');
+          if (stream) stream.getTracks().forEach(t=>t.stop()); // Ensure stream is stopped on error
+          videoContainer.classList.add('hidden');
         }
       };
     }
-    setupScan('scanIssueBtn','videoIssue','issue');
-    setupScan('scanReceiveBtn','videoReceive','receive');
+    setupScan('scanIssueBtn','videoIssue','videoIssueContainer','issue');
+    setupScan('scanReceiveBtn','videoReceive','videoReceiveContainer','receive');
 
     async function addToBasket(key, code){
       const snap = await stockRef.child(code).get();
-      if(!snap.exists()) return showAlert(`ไม่พบสินค้า ${code}`);
+      if(!snap.exists()) {
+        showAlert(`ไม่พบสินค้า ${code}`);
+        return;
+      }
       const d = snap.val();
       const target = key==='issue'? basketIssue : basketReceive;
-      if(!target.find(x=>x.code===code)){
+      const existingItem = target.find(x=>x.code===code);
+
+      if(existingItem){
+        // If adding manually, update quantity. If from QR, just ensure it's there.
+        // For manual, quantity will be set from input field after this.
+        // For QR, it remains 1 initially.
+        showAlert(`สินค้า ${d.name} ถูกเพิ่มแล้วในตะกร้า`, 'success');
+      } else {
         target.push({ code, name:d.name, qty:1 });
-        updateBasket(key==='issue'? 'basketIssue':'basketReceive', target, key==='issue'? 'submitIssueBtn':'submitReceiveBtn');
+        showAlert(`เพิ่ม ${d.name} เข้าตะกร้า`, 'success');
       }
+      updateBasket(key==='issue'? 'basketIssue':'basketReceive', target, key==='issue'? 'submitIssueBtn':'submitReceiveBtn');
     }
 
-    document.getElementById('addIssueBtn').onclick = ()=> {
+    document.getElementById('addIssueBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeIssue').value.trim();
-      const code=raw.split(' ‒ ')[0], qty=+document.getElementById('manualQtyIssue').value;
-      if(!code||qty<1) return showAlert('กรุณาระบุให้ถูกต้อง');
-      addToBasket('issue',code);
-      basketIssue.find(x=>x.code===code).qty = qty;
-      updateBasket('basketIssue',basketIssue,'submitIssueBtn');
+      const code = raw.split(' ‒ ')[0];
+      const qty = +document.getElementById('manualQtyIssue').value;
+
+      if(!code || qty < 1) {
+        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง');
+      }
+
+      const snap = await stockRef.child(code).get();
+      if(!snap.exists()) {
+        showAlert(`ไม่พบสินค้า ${code}`);
+        return;
+      }
+      const d = snap.val();
+      const existingItem = basketIssue.find(x => x.code === code);
+
+      if (existingItem) {
+        existingItem.qty = qty; // Update quantity if item already exists
+        showAlert(`อัปเดตจำนวนสินค้า ${d.name} เป็น ${qty}`, 'success');
+      } else {
+        basketIssue.push({ code, name: d.name, qty: qty }); // Add new item
+        showAlert(`เพิ่ม ${d.name} จำนวน ${qty} เข้าตะกร้า`, 'success');
+      }
+      updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
+      document.getElementById('manualCodeIssue').value = ''; // Clear input
+      document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
     };
-    document.getElementById('addReceiveBtn').onclick = ()=> {
+
+    document.getElementById('addReceiveBtn').onclick = async () => {
       const raw = document.getElementById('manualCodeReceive').value.trim();
-      const code=raw.split(' ‒ ')[0], qty=+document.getElementById('manualQtyReceive').value;
-      if(!code||qty<1) return showAlert('กรุณาระบุให้ถูกต้อง');
-      addToBasket('receive',code);
-      basketReceive.find(x=>x.code===code).qty = qty;
-      updateBasket('basketReceive',basketReceive,'submitReceiveBtn');
+      const code = raw.split(' ‒ ')[0];
+      const qty = +document.getElementById('manualQtyReceive').value;
+
+      if(!code || qty < 1) {
+        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง');
+      }
+
+      const snap = await stockRef.child(code).get();
+      if(!snap.exists()) {
+        showAlert(`ไม่พบสินค้า ${code}`);
+        return;
+      }
+      const d = snap.val();
+      const existingItem = basketReceive.find(x => x.code === code);
+
+      if (existingItem) {
+        existingItem.qty = qty; // Update quantity if item already exists
+        showAlert(`อัปเดตจำนวนสินค้า ${d.name} เป็น ${qty}`, 'success');
+      } else {
+        basketReceive.push({ code, name: d.name, qty: qty }); // Add new item
+        showAlert(`เพิ่ม ${d.name} จำนวน ${qty} เข้าตะกร้า`, 'success');
+      }
+      updateBasket('basketReceive', basketReceive, 'submitReceiveBtn');
+      document.getElementById('manualCodeReceive').value = ''; // Clear input
+      document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
     };
 
     async function getAdminIds(){
@@ -221,93 +439,194 @@
       const ids=[]; snap.forEach(ch=>{ const u=ch.val().userIdLine; if(u)ids.push(u); });
       return ids;
     }
-    async function notifyAdmins(action,items){
+
+    async function notifyAdmins(action, items){
       const toList = await getAdminIds();
-      if(!toList.length) return;
-      fetch(GAS_URL,{
-        method:'POST', mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ action, user:(action==='issue'?actorIssue:actorReceive), userId:userIdLine, date:new Date().toISOString(), items, toList })
-      });
+      if(!toList.length) {
+        console.warn('No admin IDs found for notification.');
+        return;
+      }
+
+      // Prepare items for GAS: only send necessary data
+      const simplifiedItems = items.map(item => ({
+        code: item.code,
+        name: item.name,
+        qty: item.qty
+      }));
+
+      try {
+        await fetch(GAS_URL,{
+          method:'POST',
+          mode:'no-cors', // Use 'no-cors' if your GAS is public and doesn't handle CORS.
+                           // For better error handling, if GAS supports CORS, use 'cors' and check response.
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            action,
+            user: (action === 'issue' ? actorIssue : actorReceive),
+            userId: userIdLine,
+            date: new Date().toISOString(),
+            items: simplifiedItems,
+            toList
+          })
+        });
+        console.log('Admin notification sent.');
+      } catch (error) {
+        console.error('Error sending admin notification:', error);
+        // Note: With 'no-cors', you won't see network errors in the console
+        // only if there's a client-side error before the request is sent.
+        // Server-side errors or CORS issues won't be visible directly.
+      }
     }
 
     document.getElementById('submitIssueBtn').onclick = async ()=>{
       if(!basketIssue.length) return;
-      const now=new Date().toISOString(), items=[];
-      for(const it of basketIssue){
-        const key=issueRef.push().key;
-        await issueRef.child(key).set({ id:key,date:now,timestamp:firebase.database.ServerValue.TIMESTAMP, borrower:actorIssue,userId:userIdLine,itemCode:it.code,itemName:it.name,quantity:it.qty });
-        await stockRef.child(it.code).child('quantity').transaction(c=>c-it.qty);
-        items.push(it);
+      setButtonLoading('submitIssueBtn', true, 'ยืนยันเบิก (หลายรายการ)'); // Show loading state
+      try {
+        const now = new Date().toISOString();
+        const itemsToProcess = [...basketIssue]; // Create a copy to iterate
+
+        for(const it of itemsToProcess){
+          const key=issueRef.push().key;
+          await issueRef.child(key).set({
+            id:key,
+            date:now,
+            timestamp:firebase.database.ServerValue.TIMESTAMP,
+            borrower:actorIssue,
+            userId:userIdLine,
+            itemCode:it.code,
+            itemName:it.name,
+            quantity:it.qty
+          });
+          await stockRef.child(it.code).child('quantity').transaction(c=>{
+            // Ensure quantity doesn't go below zero
+            return (c - it.qty < 0) ? 0 : c - it.qty;
+          });
+        }
+
+        // Flex Message contents (corrected structure)
+        const flexBodyContents = [
+          {type:"text",text:"📤 เบิกหลายรายการ",weight:"bold",size:"lg",color:"#C0392B"},
+          {type:"text",text:`ผู้เบิก: ${actorIssue}`,size:"sm",margin:"md"},
+          {type:"separator",margin:"md"},
+          ...itemsToProcess.map(it=>({
+            type:"box",layout:"baseline",spacing:"sm",margin:"md",
+            contents:[
+              {type:"text",text:it.code,flex:1,size:"sm",color:"#555"},
+              {type:"text",text:`${it.name} × ${it.qty}`,flex:3,size:"sm",wrap:true}
+            ]
+          }))
+        ];
+        const flexMessageBubble = {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: flexBodyContents
+          }
+        };
+
+        await liff.sendMessages([{type:'flex',altText:'📤 แจ้งเบิกหลายรายการ',contents:flexMessageBubble}]);
+        await notifyAdmins('issue', itemsToProcess);
+        showAlert('เบิกเรียบร้อยแล้ว', 'success');
+        basketIssue = []; updateBasket('basketIssue', [], 'submitIssueBtn');
+      } catch (error) {
+        console.error("Error submitting issue: ", error);
+        showAlert('เกิดข้อผิดพลาดในการเบิกสินค้า: ' + error.message);
+      } finally {
+        setButtonLoading('submitIssueBtn', false, 'ยืนยันเบิก (หลายรายการ)'); // Hide loading state
       }
-      const contents=[
-        {type:"text",text:"📤 เบิกหลายรายการ",weight:"bold",size:"lg",color:"#C0392B"},
-        {type:"text",text:`ผู้เบิก: ${actorIssue}`,size:"sm",margin:"md"},
-        {type:"separator",margin:"md"},
-        ...items.map(it=>({
-          type:"box",layout:"baseline",spacing:"sm",margin:"md",
-          contents:[
-            {type:"text",text:it.code,flex:1,size:"sm",color:"#555"},
-            {type:"text",text:`${it.name} × ${it.qty}`,flex:3,size:"sm",wrap:true}
-          ]
-        }))
-      ];
-      await liff.sendMessages([{type:'flex',altText:'📤 แจ้งเบิกหลายรายการ',contents:{type:"bubble",body:{type:"box",layout:"vertical",contents}}}]);
-      await notifyAdmins('issue',items);
-      showAlert('เบิกเรียบร้อย');
-      basketIssue=[]; updateBasket('basketIssue',[], 'submitIssueBtn');
     };
 
     document.getElementById('submitReceiveBtn').onclick = async ()=>{
       if(!basketReceive.length) return;
-      const now=new Date().toISOString(), items=[];
-      for(const it of basketReceive){
-        const key=receiveRef.push().key;
-        await receiveRef.child(key).set({ id:key,date:now,timestamp:firebase.database.ServerValue.TIMESTAMP, borrower:actorReceive,userId:userIdLine,itemCode:it.code,itemName:it.name,quantity:it.qty });
-        await stockRef.child(it.code).child('quantity').transaction(c=>c+it.qty);
-        items.push(it);
+      setButtonLoading('submitReceiveBtn', true, 'ยืนยันรับเข้า (หลายรายการ)'); // Show loading state
+      try {
+        const now = new Date().toISOString();
+        const itemsToProcess = [...basketReceive]; // Create a copy to iterate
+
+        for(const it of itemsToProcess){
+          const key=receiveRef.push().key;
+          await receiveRef.child(key).set({
+            id:key,
+            date:now,
+            timestamp:firebase.database.ServerValue.TIMESTAMP,
+            borrower:actorReceive,
+            userId:userIdLine,
+            itemCode:it.code,
+            itemName:it.name,
+            quantity:it.qty
+          });
+          await stockRef.child(it.code).child('quantity').transaction(c=> (c || 0) + it.qty); // Ensure c is not null/undefined
+        }
+
+        // Flex Message contents (corrected structure)
+        const flexBodyContents = [
+          {type:"text",text:"📥 รับเข้าสินค้าหลายรายการ",weight:"bold",size:"lg",color:"#27AE60"},
+          {type:"text",text:`ผู้รับเข้า: ${actorReceive}`,size:"sm",margin:"md"},
+          {type:"separator",margin:"md"},
+          ...itemsToProcess.map(it=>({
+            type:"box",layout:"baseline",spacing:"sm",margin:"md",
+            contents:[
+              {type:"text",text:it.code,flex:1,size:"sm",color:"#555"},
+              {type:"text",text:`${it.name} × ${it.qty}`,flex:3,size:"sm",wrap:true}
+            ]
+          }))
+        ];
+        const flexMessageBubble = {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: flexBodyContents
+          }
+        };
+
+        await liff.sendMessages([{type:'flex',altText:'📥 แจ้งรับเข้าสินค้าหลายรายการ',contents:flexMessageBubble}]);
+        await notifyAdmins('receive', itemsToProcess);
+        showAlert('รับเข้าเรียบร้อยแล้ว', 'success');
+        basketReceive = []; updateBasket('basketReceive', [], 'submitReceiveBtn');
+      } catch (error) {
+        console.error("Error submitting receive: ", error);
+        showAlert('เกิดข้อผิดพลาดในการรับเข้าสินค้า: ' + error.message);
+      } finally {
+        setButtonLoading('submitReceiveBtn', false, 'ยืนยันรับเข้า (หลายรายการ)'); // Hide loading state
       }
-      const contents=[
-        {type:"text",text:"📥 รับเข้าสินค้าหลายรายการ",weight:"bold",size:"lg",color:"#27AE60"},
-        {type:"text",text:`ผู้รับเข้า: ${actorReceive}`,size:"sm",margin:"md"},
-        {type:"separator",margin:"md"},
-        ...items.map(it=>({
-          type:"box",layout:"baseline",spacing:"sm",margin:"md",
-          contents:[
-            {type:"text",text:it.code,flex:1,size:"sm",color:"#555"},
-            {type:"text",text:`${it.name} × ${it.qty}`,flex:3,size:"sm",wrap:true}
-          ]
-        }))
-      ];
-      await liff.sendMessages([{type:'flex',altText:'📥 แจ้งรับเข้าสินค้าหลายรายการ',contents:{type:"bubble",body:{type:"box",layout:"vertical",contents}}}]);
-      await notifyAdmins('receive',items);
-      showAlert('รับเข้าเรียบร้อย');
-      basketReceive=[]; updateBasket('basketReceive',[], 'submitReceiveBtn');
     };
 
     async function loadHistory(){
-      const [rSnap,iSnap]=await Promise.all([receiveRef.once('value'),issueRef.once('value')]);
-      const recs=[];
-      rSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'});});
-      iSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'});});
-      recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
-      historyRecords=recs; historyPage=1; renderHistory();
+      try {
+        const [rSnap,iSnap]=await Promise.all([receiveRef.once('value'),issueRef.once('value')]);
+        const recs=[];
+        rSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'});});
+        iSnap.forEach(ch=>{const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'});});
+        recs.sort((a,b)=> (new Date(b.timestamp || b.date)).getTime() - (new Date(a.timestamp || a.date)).getTime()); // Sort by timestamp if available, else date
+        historyRecords=recs; historyPage=1; renderHistory();
+      } catch (error) {
+        console.error("Error loading history: ", error);
+        showAlert('ไม่สามารถโหลดประวัติได้: ' + error.message);
+      }
     }
     function renderHistory(){
       const start=(historyPage-1)*pageSize;
       const page=historyRecords.slice(start,start+pageSize);
       const tbody=document.getElementById('historyTable');
       tbody.innerHTML='';
-      page.forEach(d=>{
-        const cls=d.type==='receive'?'bg-green-50':'bg-red-50';
-        const tr=document.createElement('tr'); tr.className=cls;
-        tr.innerHTML=`
-          <td class="px-4 py-2">${new Date(d.date).toLocaleString('th-TH')}</td>
-          <td class="px-4 py-2">${d.type==='receive'?'รับเข้า':'เบิก'}</td>
-          <td class="px-4 py-2">${d.itemCode} ‒ ${d.itemName}</td>
-          <td class="px-4 py-2">${d.quantity}</td>`;
-        tbody.appendChild(tr);
-      });
+      if (page.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-3 text-center text-gray-500">ไม่พบประวัติการทำรายการ</td></tr>`;
+      } else {
+        page.forEach(d=>{
+          const cls=d.type==='receive'?'bg-green-50':'bg-red-50';
+          const tr=document.createElement('tr'); tr.className=`${cls} hover:bg-gray-100 transition-colors duration-150`;
+          const displayDate = new Date(d.timestamp || d.date).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+          tr.innerHTML=`
+            <td class="px-4 py-3 text-sm">${displayDate}</td>
+            <td class="px-4 py-3 text-sm font-medium ${d.type==='receive'?'text-green-700':'text-red-700'}">${d.type==='receive'?'รับเข้า':'เบิก'}</td>
+            <td class="px-4 py-3 text-sm text-gray-800">${d.itemCode} ‒ ${d.itemName}</td>
+            <td class="px-4 py-3 text-sm font-bold text-gray-800">${d.quantity}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
       const total=Math.max(1,Math.ceil(historyRecords.length/pageSize));
       document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
       document.getElementById('historyPrev').disabled = historyPage===1;
@@ -315,22 +634,34 @@
     }
     document.getElementById('historyPrev').onclick=()=>{if(historyPage>1){historyPage--;renderHistory();}};
     document.getElementById('historyNext').onclick=()=>{const t=Math.ceil(historyRecords.length/pageSize);if(historyPage<t){historyPage++;renderHistory();}};
-    
+
     // Tab switching
-    document.getElementById('tabIssueBtn').onclick   = ()=>activateTab(true,false,false);
-    document.getElementById('tabReceiveBtn').onclick = ()=>activateTab(false,true,false);
-    document.getElementById('tabHistoryBtn').onclick = ()=>{ activateTab(false,false,true); loadHistory(); };
-    function activateTab(i,r,h){
-      document.getElementById('tabIssue').classList.toggle('hidden',!i);
-      document.getElementById('tabReceive').classList.toggle('hidden',!r);
-      document.getElementById('tabHistory').classList.toggle('hidden',!h);
-      document.getElementById('tabIssueBtn').classList.toggle('border-primary',i);
-      document.getElementById('tabReceiveBtn').classList.toggle('border-primary',r);
-      document.getElementById('tabHistoryBtn').classList.toggle('border-primary',h);
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('#tabIssue, #tabReceive, #tabHistory');
+
+    function activateTab(tabName){
+      tabButtons.forEach(btn => btn.classList.remove('active', 'border-primary', 'text-primary', 'font-semibold'));
+      tabContents.forEach(content => content.classList.add('hidden'));
+
+      if (tabName === 'issue') {
+        document.getElementById('tabIssue').classList.remove('hidden');
+        document.getElementById('tabIssueBtn').classList.add('active', 'border-primary', 'text-primary', 'font-semibold');
+      } else if (tabName === 'receive') {
+        document.getElementById('tabReceive').classList.remove('hidden');
+        document.getElementById('tabReceiveBtn').classList.add('active', 'border-primary', 'text-primary', 'font-semibold');
+      } else if (tabName === 'history') {
+        document.getElementById('tabHistory').classList.remove('hidden');
+        document.getElementById('tabHistoryBtn').classList.add('active', 'border-primary', 'text-primary', 'font-semibold');
+        loadHistory(); // Load history when history tab is activated
+      }
     }
 
-    // เริ่มต้น
-    liffInit();
+    document.getElementById('tabIssueBtn').onclick   = ()=>activateTab('issue');
+    document.getElementById('tabReceiveBtn').onclick = ()=>activateTab('receive');
+    document.getElementById('tabHistoryBtn').onclick = ()=>activateTab('history');
+
+    // Initial activation
+    liffInit().then(() => activateTab('issue'));
   </script>
 </body>
 </html>

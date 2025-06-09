@@ -58,21 +58,17 @@
           </div>
         </div>
       </div>
-
       <datalist id="inventoryList"></datalist>
       <input list="inventoryList" id="issCodeInput"
              placeholder="พิมพ์รหัสหรือชื่อสินค้า"
              class="w-full border rounded p-2 mb-2" />
-
       <button id="issScanBtn"
               class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
         สแกน QR
       </button>
       <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
-
       <input id="issQty" type="number" min="1" value="1"
              placeholder="จำนวนเบิก" class="w-full border rounded p-2 mb-4" />
-
       <button id="issSubmit"
               class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded">
         เบิก
@@ -98,21 +94,17 @@
           </div>
         </div>
       </div>
-
       <datalist id="inventoryList2"></datalist>
       <input list="inventoryList2" id="recvCodeInput"
              placeholder="พิมพ์รหัสหรือชื่อสินค้า"
              class="w-full border rounded p-2 mb-2" />
-
       <button id="recvScanBtn"
               class="w-full mb-4 bg-green-600 hover:bg-green-500 text-white py-2 rounded">
         สแกน QR
       </button>
       <video id="recvVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
-
       <input id="recvQty" type="number" min="1" value="1"
              placeholder="จำนวนรับเข้า" class="w-full border rounded p-2 mb-4" />
-
       <button id="recvSubmit"
               class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded">
         รับเข้า
@@ -145,10 +137,16 @@
     </div>
   </div>
 
+  <!-- ปุ่มทดสอบแจ้งเตือน -->
+  <button id="testNotifyBtn"
+          class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg">
+    ทดสอบแจ้งเตือน
+  </button>
+
   <script>
     // Configuration
-    const LIFF_ID  = '2007335399-rmoYp9Md';  // เปลี่ยนเป็น LIFF ID ของคุณ
-    const GAS_URL  = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; // เปลี่ยนเป็น URL Web App
+    const LIFF_ID  = '2007335399-rmoYp9Md';  
+    const GAS_URL  = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; 
 
     // Firebase refs
     const stockRef     = db.ref('stock');
@@ -281,7 +279,7 @@
       await fetch(GAS_URL, {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ action, code, name, qty, user, userId:userIdLine, toList:adminIds })
+        body: JSON.stringify({ action, code, name, qty, user, userId: userIdLine, toList: adminIds })
       });
     }
 
@@ -352,8 +350,7 @@
       rSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'}); });
       iSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'}); });
       recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
-      historyRecords=recs; historyPage=1; renderHistory();
-    }
+      historyRecords=recs; historyPage=1; renderHistory();}
     function renderHistory() {
       const start=(historyPage-1)*historyPageSize;
       const page=historyRecords.slice(start,start+historyPageSize);
@@ -370,14 +367,36 @@
       const total=Math.ceil(historyRecords.length/historyPageSize)||1;
       document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
       document.getElementById('historyPrev').disabled=historyPage===1;
-      document.getElementById('historyNext').disabled=historyPage===total;
-    }
+      document.getElementById('historyNext').disabled=historyPage===total;}
     document.getElementById('historyPrev').onclick=()=>{
-      if(historyPage>1){historyPage--; renderHistory();}
-    };
+      if(historyPage>1){historyPage--; renderHistory();}}
     document.getElementById('historyNext').onclick=()=>{
       const t=Math.ceil(historyRecords.length/historyPageSize);
-      if(historyPage<t){historyPage++; renderHistory();}
+      if(historyPage<t){historyPage++; renderHistory();}};
+
+    // Test notify button
+    document.getElementById('testNotifyBtn').onclick = async () => {
+      const adminIds = await getAdminIds();
+      console.log('Admin IDs:', adminIds);
+      const payload = {
+        action: 'issue',
+        code:   'TEST001',
+        name:   'ทดสอบสินค้า',
+        qty:    1,
+        user:   borrowerName,
+        userId: userIdLine,
+        toList: adminIds
+      };
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      console.log('GAS response:', json);
+      showCustomAlert(json.status === 'success'
+        ? 'ทดสอบแจ้งเตือนส่งเรียบร้อย'
+        : 'ทดสอบล้มเหลว: ' + (json.message||''));
     };
   </script>
 </body>

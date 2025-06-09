@@ -14,7 +14,6 @@
   <!-- jsQR for QR scanning -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <!-- Your Firebase config -->
-  <script src="firebase-config.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
@@ -125,6 +124,21 @@
     // === Config ===
     const LIFF_ID = '2007335399-rmoYp9Md';
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
+
+  // Firebase config
+  const firebaseConfig = {
+      apiKey: "AIzaSyBOCnA32ir0bHOlfIOvJ_ltAj65A5DJSlk",
+      authDomain: "register-58eea.firebaseapp.com",
+      databaseURL: "https://register-58eea-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "register-58eea",
+      storageBucket: "register-58eea.firebasestorage.app",
+      messagingSenderId: "629204385342",
+      appId: "1:629204385342:web:1d9c20a8b3f57269e09b6f",
+      measurementId: "G-FFLKXCZE64" };
+  
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const storage = firebase.storage();
 
     // Firebase refs
     const stockRef     = db.ref('stock');

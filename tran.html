@@ -137,16 +137,10 @@
     </div>
   </div>
 
-  <!-- ปุ่มทดสอบแจ้งเตือน -->
-  <button id="testNotifyBtn"
-          class="fixed bottom-6 right-6 bg-blue-600 text-white px-4 py-2 rounded shadow-lg">
-    ทดสอบแจ้งเตือน
-  </button>
-
   <script>
     // Configuration
-    const LIFF_ID  = '2007335399-rmoYp9Md';  
-    const GAS_URL  = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; 
+    const LIFF_ID = '2007335399-rmoYp9Md';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
 
     // Firebase refs
     const stockRef     = db.ref('stock');
@@ -272,17 +266,17 @@
       return ids;
     }
 
-    // Notify admins via GAS
+    // Notify admins via GAS (no-cors)
     async function notifyAdmins(action, code, name, qty, user) {
       const adminIds = await getAdminIds();
       if (!adminIds.length) return;
-      await fetch(GAS_URL, {
-       method: 'POST',
-       headers:{ 'Content-Type':'application/json' },
-       body:    JSON.stringify(payload)
-     });
-     showCustomAlert('ทดสอบแจ้งเตือนสั่ง POST เรียบร้อย');
-    };
+      fetch(GAS_URL, {
+        method: 'POST',
+        mode:   'no-cors',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action, code, name, qty, user, userId: userIdLine, toList: adminIds })
+      });
+    }
 
     // Issue submit
     document.getElementById('issSubmit').onclick = async ()=>{
@@ -351,7 +345,8 @@
       rSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'}); });
       iSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'}); });
       recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
-      historyRecords=recs; historyPage=1; renderHistory();}
+      historyRecords=recs; historyPage=1; renderHistory();
+    }
     function renderHistory() {
       const start=(historyPage-1)*historyPageSize;
       const page=historyRecords.slice(start,start+historyPageSize);
@@ -368,38 +363,15 @@
       const total=Math.ceil(historyRecords.length/historyPageSize)||1;
       document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
       document.getElementById('historyPrev').disabled=historyPage===1;
-      document.getElementById('historyNext').disabled=historyPage===total;}
+      document.getElementById('historyNext').disabled=historyPage===total;
+    }
     document.getElementById('historyPrev').onclick=()=>{
-      if(historyPage>1){historyPage--; renderHistory();}}
+      if(historyPage>1){historyPage--; renderHistory();}
+    };
     document.getElementById('historyNext').onclick=()=>{
       const t=Math.ceil(historyRecords.length/historyPageSize);
-      if(historyPage<t){historyPage++; renderHistory();}};
-
-  document.getElementById('testNotifyBtn').onclick = async () => {
-    const adminIds = await getAdminIds();
-    console.log('Admin IDs:', adminIds);
-
-    const payload = {
-      action: 'issue',
-      code:   'TEST001',
-      name:   'ทดสอบสินค้า',
-      qty:    1,
-      user:   borrowerName,
-      userId: userIdLine,
-      toList: adminIds
+      if(historyPage<t){historyPage++; renderHistory();}
     };
-
-
-   // ไม่มี preflight CORS → ใช้ no-cors
-   await fetch(GAS_URL, {
-     method: 'POST',
-     mode:   'no-cors',
-     headers:{ 'Content-Type':'application/json' },
-     body:    JSON.stringify(payload)
-   });
-   showCustomAlert('ทดสอบแจ้งเตือนสั่ง POST เรียบร้อย');
-  };
-
   </script>
 </body>
 </html>

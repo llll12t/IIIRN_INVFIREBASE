@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <title>ระบบคลังสินค้า (เบิกหลายรายการ)</title>
+  <title>ระบบคลังสินค้า (เบิก/รับหลายรายการ)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,44 +20,78 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
-  <!-- Alert -->
+  <!-- หน้าต่างแจ้งเตือน -->
   <div id="customAlert"
        class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50">
   </div>
 
   <div class="max-w-lg mx-auto p-6 space-y-6">
-    <!-- Header -->
-    <div class="bg-white p-4 rounded-lg">
-      <div><span class="font-bold">ผู้เบิก:</span> <span id="actorName">–</span></div>
+    <!-- แท็บ -->
+    <div class="flex mb-4 border-b">
+      <button id="tabIssueBtn"   class="flex-1 py-2 text-center border-b-2 border-primary font-semibold">เบิก</button>
+      <button id="tabReceiveBtn" class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">รับเข้า</button>
+      <button id="tabHistoryBtn" class="flex-1 py-2 text-center border-b-2 border-transparent hover:border-primary">ประวัติ</button>
     </div>
 
-    <!-- สแกน QR เพิ่มรายการ -->
-    <button id="scanBtn"
-            class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
-      สแกน QR เพิ่มรายการ
-    </button>
-    <video id="video" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
-
-    <!-- datalist สำหรับ autocomplete -->
-    <datalist id="inventoryList"></datalist>
-
-    <!-- ตะกร้าเบิก -->
-    <ul id="basket" class="space-y-2 mb-4"></ul>
-
-    <!-- ช่องพิมพ์โค้ด + จำนวน + ปุ่มเพิ่มด้วยมือ -->
-    <div class="flex space-x-2 mb-4">
-      <input list="inventoryList" id="manualCode"
-             placeholder="พิมพ์รหัสหรือชื่อสินค้า"
-             class="flex-1 border rounded p-2" />
-      <input type="number" id="manualQty" min="1" value="1"
-             class="w-20 border rounded p-2" />
-      <button id="addBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่ม</button>
+    <!-- เบิก หลายรายการ -->
+    <div id="tabIssue">
+      <div class="bg-white p-4 rounded-lg mb-4">
+        <div><span class="font-bold">ผู้เบิก:</span> <span id="actorNameIssue">–</span></div>
+      </div>
+      <button id="scanIssueBtn" class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">สแกน QR เพิ่มรายการ</button>
+      <video id="videoIssue" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+      <datalist id="inventoryList"></datalist>
+      <ul id="basketIssue" class="space-y-2 mb-4"></ul>
+      <div class="flex space-x-2 mb-4">
+        <input list="inventoryList" id="manualCodeIssue" placeholder="พิมพ์รหัสหรือชื่อสินค้า" class="flex-1 border rounded p-2" />
+        <input type="number" id="manualQtyIssue" min="1" value="1" class="w-20 border rounded p-2" />
+        <button id="addIssueBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่ม</button>
+      </div>
+      <button id="submitIssueBtn" class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded disabled:opacity-50" disabled>
+        ยืนยันเบิก (หลายรายการ)
+      </button>
     </div>
 
-    <!-- ปุ่มยืนยันเบิกหลายรายการ -->
-    <button id="submitBtn"
-            class="w-full bg-red-600 hover:bg-red-500 text-white py-2 rounded disabled:opacity-50"
-            disabled>ยืนยันเบิก (หลายรายการ)</button>
+    <!-- รับเข้า หลายรายการ -->
+    <div id="tabReceive" class="hidden">
+      <div class="bg-white p-4 rounded-lg mb-4">
+        <div><span class="font-bold">ผู้รับเข้า:</span> <span id="actorNameReceive">–</span></div>
+      </div>
+      <button id="scanReceiveBtn" class="w-full mb-4 bg-green-600 hover:bg-green-500 text-white py-2 rounded">สแกน QR เพิ่มรายการ</button>
+      <video id="videoReceive" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
+      <datalist id="inventoryList2"></datalist>
+      <ul id="basketReceive" class="space-y-2 mb-4"></ul>
+      <div class="flex space-x-2 mb-4">
+        <input list="inventoryList2" id="manualCodeReceive" placeholder="พิมพ์รหัสหรือชื่อสินค้า" class="flex-1 border rounded p-2" />
+        <input type="number" id="manualQtyReceive" min="1" value="1" class="w-20 border rounded p-2" />
+        <button id="addReceiveBtn" class="bg-blue-600 text-white px-4 py-2 rounded">เพิ่ม</button>
+      </div>
+      <button id="submitReceiveBtn" class="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded disabled:opacity-50" disabled>
+        ยืนยันรับเข้า (หลายรายการ)
+      </button>
+    </div>
+
+    <!-- ประวัติ -->
+    <div id="tabHistory" class="hidden">
+      <div class="overflow-x-auto bg-white rounded shadow mb-2">
+        <table class="min-w-full text-left">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="px-4 py-2">วันที่/เวลา</th>
+              <th class="px-4 py-2">ประเภท</th>
+              <th class="px-4 py-2">รหัส-ชื่อ</th>
+              <th class="px-4 py-2">จำนวน</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable" class="divide-y"></tbody>
+        </table>
+      </div>
+      <div class="flex justify-between items-center">
+        <button id="historyPrev" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50" disabled>ก่อนหน้า</button>
+        <span id="historyPageInfo" class="text-sm text-gray-600">หน้าที่ 1 จาก 1</span>
+        <button id="historyNext" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50" disabled>ถัดไป</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -65,154 +99,253 @@
     const GAS_URL      = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
     const stockRef     = db.ref('stock');
     const issueRef     = db.ref('issueRecords');
+    const receiveRef   = db.ref('receiveRecords');
     const employeesRef = db.ref('employees');
 
-    let userIdLine = '', actorName = '';
-    let basket = [];
+    let userIdLine = '',
+        actorNameIssue = '',
+        actorNameReceive = '';
+    let basketIssue = [], basketReceive = [];
+    let historyRecords = [], historyPage = 1;
+    const historyPageSize = 15;
 
-    // UI Helpers
+    // แสดงแจ้งเตือน
     function alertMsg(msg){
       const a = document.getElementById('customAlert');
       a.textContent = msg; a.classList.remove('hidden');
       setTimeout(()=>a.classList.add('hidden'),2000);
     }
-    function updateBasketUI(){
-      const ul = document.getElementById('basket');
-      ul.innerHTML = basket.map(it=>`
-        <li class="flex justify-between items-center bg-white p-2 rounded shadow">
-          <span>${it.code} – ${it.name} × ${it.qty}</span>
-          <button onclick="removeItem('${it.code}')" class="text-red-500 font-bold">ลบ</button>
-        </li>
-      `).join('');
-      document.getElementById('submitBtn').disabled = !basket.length;
-    }
-    function removeItem(code){
-      basket = basket.filter(x=>x.code!==code);
-      updateBasketUI();
-    }
 
-    // LIFF Init
+    // สลับแท็บ
+    function activateTab(i,r,h){
+      document.getElementById('tabIssue').classList.toggle('hidden',!i);
+      document.getElementById('tabReceive').classList.toggle('hidden',!r);
+      document.getElementById('tabHistory').classList.toggle('hidden',!h);
+      document.getElementById('tabIssueBtn').classList.toggle('border-primary',i);
+      document.getElementById('tabReceiveBtn').classList.toggle('border-primary',r);
+      document.getElementById('tabHistoryBtn').classList.toggle('border-primary',h);
+    }
+    document.getElementById('tabIssueBtn').onclick   = ()=>activateTab(true,false,false);
+    document.getElementById('tabReceiveBtn').onclick = ()=>activateTab(false,true,false);
+    document.getElementById('tabHistoryBtn').onclick = ()=>{ activateTab(false,false,true); loadHistory(); };
+
+    // LIFF init
     window.onload = async ()=>{
       await liff.init({liffId:LIFF_ID});
       if(!liff.isLoggedIn()) await liff.login();
-      const p = await liff.getProfile();
-      userIdLine = p.userId;
+      const prof = await liff.getProfile();
+      userIdLine = prof.userId;
+
       // ดึงชื่อพนักงาน
       const snap = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
-      actorName = snap.exists()? Object.values(snap.val())[0].fullName : 'ไม่ทราบชื่อ';
-      document.getElementById('actorName').textContent = actorName;
-      // เติม datalist
-      const dl = document.getElementById('inventoryList');
+      const employee = snap.exists()? Object.values(snap.val())[0] : {fullName:'ไม่ทราบชื่อ'};
+      actorNameIssue   = employee.fullName;
+      actorNameReceive = employee.fullName;
+      document.getElementById('actorNameIssue').textContent   = actorNameIssue;
+      document.getElementById('actorNameReceive').textContent = actorNameReceive;
+
+      // เติม datalist สินค้า
       const s = await stockRef.once('value');
       s.forEach(ch=>{
         const d = ch.val();
-        dl.insertAdjacentHTML('beforeend', `<option value="${d.code} ‒ ${d.name}">`);
+        ['inventoryList','inventoryList2'].forEach(id=>{
+          document.getElementById(id)
+            .insertAdjacentHTML('beforeend',`<option value="${d.code} ‒ ${d.name}">`);
+        });
       });
+
+      activateTab(true,false,false);
     };
 
-    // สแกน QR
-    document.getElementById('scanBtn').onclick = async ()=>{
-      const video = document.getElementById('video');
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-        video.srcObject = stream; video.play(); video.classList.remove('hidden');
-        const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
-        (function tick(){
-          if(video.readyState===video.HAVE_ENOUGH_DATA){
-            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-            ctx.drawImage(video,0,0);
-            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
-            if(code){
-              handleScan(code.data.trim());
-              stream.getTracks().forEach(t=>t.stop());
-              video.classList.add('hidden');
-              return;
-            }
-          }
-          requestAnimationFrame(tick);
-        })();
-      } catch(e){
-        alertMsg('ไม่สามารถเข้าถึงกล้องได้');
+    // อัปเดต UI ตะกร้า
+    function updateBasketUI(listId, basket, submitBtnId){
+      document.getElementById(listId).innerHTML = basket.map(it=>`
+        <li class="flex justify-between bg-white p-2 rounded shadow">
+          <span>${it.code} – ${it.name} × ${it.qty}</span>
+          <button onclick="removeFromBasket('${listId}','${it.code}','${submitBtnId}')" class="text-red-500">ลบ</button>
+        </li>
+      `).join('');
+      document.getElementById(submitBtnId).disabled = basket.length===0;
+    }
+    window.removeFromBasket = (listId,code,btnId)=>{
+      if(listId==='basketIssue'){
+        basketIssue = basketIssue.filter(x=>x.code!==code);
+        updateBasketUI('basketIssue',basketIssue,'submitIssueBtn');
+      } else {
+        basketReceive = basketReceive.filter(x=>x.code!==code);
+        updateBasketUI('basketReceive',basketReceive,'submitReceiveBtn');
       }
     };
 
-    async function handleScan(code){
+    // สแกน QR (ทั่วไปสำหรับทั้งสองโหมด)
+    function setupScan(btnId, videoId, basketKey){
+      document.getElementById(btnId).onclick = async ()=>{
+        const video = document.getElementById(videoId);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+          video.srcObject = stream; video.play(); video.classList.remove('hidden');
+          const canvas = document.createElement('canvas'),ctx=canvas.getContext('2d');
+          (function tick(){
+            if(video.readyState===video.HAVE_ENOUGH_DATA){
+              canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+              ctx.drawImage(video,0,0);
+              const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
+              if(code){
+                handleScan(code.data.trim(), basketKey);
+                stream.getTracks().forEach(t=>t.stop());
+                video.classList.add('hidden');
+                return;
+              }
+            }
+            requestAnimationFrame(tick);
+          })();
+        } catch{
+          alertMsg('ไม่สามารถเข้าถึงกล้องได้');
+        }
+      };
+    }
+    setupScan('scanIssueBtn','videoIssue','issue');
+    setupScan('scanReceiveBtn','videoReceive','receive');
+
+    async function handleScan(code,basketKey){
       const snap = await stockRef.child(code).get();
       if(!snap.exists()) return alertMsg(`ไม่พบสินค้า ${code}`);
       const d = snap.val();
-      // ถ้ายังไม่มีใน basket ให้เพิ่ม
-      if(!basket.find(x=>x.code===code)){
-        basket.push({ code, name:d.name, qty:1 });
-        updateBasketUI();
+      const target = basketKey==='issue'? basketIssue : basketReceive;
+      if(!target.find(x=>x.code===code)){
+        target.push({code, name:d.name, qty:1});
+        updateBasketUI(
+          basketKey==='issue'? 'basketIssue':'basketReceive',
+          target,
+          basketKey==='issue'? 'submitIssueBtn':'submitReceiveBtn'
+        );
       }
     }
 
-    // เพิ่มด้วยมือ
-    document.getElementById('addBtn').onclick = async ()=>{
-      const raw = document.getElementById('manualCode').value.trim();
-      if(!raw) return;
-      const code = raw.split(' ‒ ')[0];
-      const qty  = +document.getElementById('manualQty').value;
-      if(qty<1) return alertMsg('จำนวนไม่ถูกต้อง');
+    // เพิ่มแบบ manual
+    document.getElementById('addIssueBtn').onclick = async ()=>{
+      const raw = document.getElementById('manualCodeIssue').value.trim();
+      const code = raw.split(' ‒ ')[0]; const qty = +document.getElementById('manualQtyIssue').value;
+      if(!code||qty<1) return alertMsg('กรุณาระบุโค้ดและจำนวนให้ถูกต้อง');
       const snap = await stockRef.child(code).get();
       if(!snap.exists()) return alertMsg(`ไม่พบสินค้า ${code}`);
-      const d = snap.val();
-      if(!basket.find(x=>x.code===code)){
-        basket.push({ code, name:d.name, qty });
-        updateBasketUI();
+      const d=snap.val();
+      if(!basketIssue.find(x=>x.code===code)){
+        basketIssue.push({code,name:d.name,qty});
+        updateBasketUI('basketIssue',basketIssue,'submitIssueBtn');
+      }
+    };
+    document.getElementById('addReceiveBtn').onclick = async ()=>{
+      const raw = document.getElementById('manualCodeReceive').value.trim();
+      const code = raw.split(' ‒ ')[0]; const qty = +document.getElementById('manualQtyReceive').value;
+      if(!code||qty<1) return alertMsg('กรุณาระบุโค้ดและจำนวนให้ถูกต้อง');
+      const snap = await stockRef.child(code).get();
+      if(!snap.exists()) return alertMsg(`ไม่พบสินค้า ${code}`);
+      const d=snap.val();
+      if(!basketReceive.find(x=>x.code===code)){
+        basketReceive.push({code,name:d.name,qty});
+        updateBasketUI('basketReceive',basketReceive,'submitReceiveBtn');
       }
     };
 
-    // Notify Admin via GAS
+    // ดึง Admin IDs
     async function getAdminIds(){
       const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
-      const ids = [];
-      snap.forEach(ch=>{
-        const u=ch.val().userIdLine;
-        if(u) ids.push(u);
-      });
+      const ids=[]; snap.forEach(ch=>{ const u=ch.val().userIdLine; if(u)ids.push(u); });
       return ids;
     }
+    // แจ้ง Admin ผ่าน GAS
     async function notifyAdmins(action, items){
       const admins = await getAdminIds();
       if(!admins.length) return;
       fetch(GAS_URL,{
         method:'POST', mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
+        headers:{ 'Content-Type':'application/json' },
         body:JSON.stringify({
-          action, user:actorName, userId:userIdLine,
-          date:new Date().toISOString(), items, toList:admins
+          action,
+          user: action==='issue' ? actorNameIssue : actorNameReceive,
+          userId: userIdLine,
+          date: new Date().toISOString(),
+          items,
+          toList: admins
         })
       });
     }
 
     // ส่งเบิกหลายรายการ
-    document.getElementById('submitBtn').onclick = async ()=>{
-      if(!basket.length) return;
-      const now = new Date().toISOString();
-      // บันทึกแต่ละรายการ
-      for(const it of basket){
+    document.getElementById('submitIssueBtn').onclick = async ()=>{
+      if(!basketIssue.length) return;
+      const now = new Date().toISOString(), items=[];
+      for(const it of basketIssue){
         const key = issueRef.push().key;
         await issueRef.child(key).set({
-          id:key, date:now,
-          timestamp: firebase.database.ServerValue.TIMESTAMP,
-          borrower: actorName,
-          userId: userIdLine,
-          itemCode: it.code,
-          itemName: it.name,
-          quantity: it.qty
+          id:key, date:now, timestamp:firebase.database.ServerValue.TIMESTAMP,
+          borrower:actorNameIssue, userId:userIdLine,
+          itemCode:it.code, itemName:it.name, quantity:it.qty
         });
-        // ลด stock
         await stockRef.child(it.code).child('quantity').transaction(c=>c-it.qty);
+        items.push(it);
       }
-      // ส่ง LIFF message สรุป
-      const txt = ['📤 เบิกหลายรายการ', ...basket.map(it=>`${it.code}×${it.qty}`)].join('\n');
+      const txt=['📤 เบิกหลายรายการ',...items.map(it=>`${it.code}×${it.qty}`)].join('\n');
       await liff.sendMessages([{type:'text',text:txt}]);
-      // แจ้ง Admin
-      await notifyAdmins('issue-multi', basket);
+      await notifyAdmins('issue',items);
       alertMsg('เบิกเรียบร้อย');
-      basket=[]; updateBasketUI();
+      basketIssue=[]; updateBasketUI('basketIssue',[], 'submitIssueBtn');
     };
+
+    // ส่งรับเข้าหลายรายการ
+    document.getElementById('submitReceiveBtn').onclick = async ()=>{
+      if(!basketReceive.length) return;
+      const now = new Date().toISOString(), items=[];
+      for(const it of basketReceive){
+        const key = receiveRef.push().key;
+        await receiveRef.child(key).set({
+          id:key, date:now, timestamp:firebase.database.ServerValue.TIMESTAMP,
+          borrower:actorNameReceive, userId:userIdLine,
+          itemCode:it.code, itemName:it.name, quantity:it.qty
+        });
+        await stockRef.child(it.code).child('quantity').transaction(c=>c+it.qty);
+        items.push(it);
+      }
+      const txt=['📥 รับเข้าสินค้าหลายรายการ',...items.map(it=>`${it.code}×${it.qty}`)].join('\n');
+      await liff.sendMessages([{type:'text',text:txt}]);
+      await notifyAdmins('receive',items);
+      alertMsg('รับเข้าเรียบร้อย');
+      basketReceive=[]; updateBasketUI('basketReceive',[], 'submitReceiveBtn');
+    };
+
+    // โหลดประวัติ
+    async function loadHistory(){
+      const [rSnap,iSnap] = await Promise.all([ receiveRef.once('value'), issueRef.once('value') ]);
+      const recs=[];
+      rSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'}); });
+      iSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'}); });
+      recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+      historyRecords=recs; historyPage=1; renderHistory();
+    }
+    function renderHistory(){
+      const start=(historyPage-1)*historyPageSize;
+      const page=historyRecords.slice(start,start+historyPageSize);
+      const tbody=document.getElementById('historyTable');
+      tbody.innerHTML='';
+      page.forEach(d=>{
+        const cls=d.type==='receive'?'bg-green-50':'bg-red-50';
+        const tr=document.createElement('tr'); tr.className=cls;
+        tr.innerHTML=`
+          <td class="px-4 py-2">${new Date(d.date).toLocaleString('th-TH')}</td>
+          <td class="px-4 py-2">${d.type==='receive'?'รับเข้า':'เบิก'}</td>
+          <td class="px-4 py-2">${d.itemCode} ‒ ${d.itemName}</td>
+          <td class="px-4 py-2">${d.quantity}</td>`;
+        tbody.appendChild(tr);
+      });
+      const total=Math.max(1,Math.ceil(historyRecords.length/historyPageSize));
+      document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
+      document.getElementById('historyPrev').disabled = historyPage===1;
+      document.getElementById('historyNext').disabled = historyPage===total;
+    }
+    document.getElementById('historyPrev').onclick=()=>{ if(historyPage>1){historyPage--;renderHistory();}};
+    document.getElementById('historyNext').onclick=()=>{ const t=Math.ceil(historyRecords.length/historyPageSize);
+      if(historyPage<t){historyPage++;renderHistory();}};
   </script>
 </body>
 </html>

@@ -9,15 +9,27 @@
   <!-- LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <!-- Firebase SDKs -->
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<!-- เพิ่มบรรทัดนี้ -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-<!-- แล้วค่อยโหลด config ของคุณ -->
-
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <!-- jsQR for QR scanning -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <!-- Your Firebase config -->
+  <script src="firebase-config.js"></script>
+  <!-- Your Firebase config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "...",
+      authDomain: "...",
+      databaseURL: "...",
+      projectId: "...",
+      storageBucket: "...", // e.g. your-app.appspot.com
+      messagingSenderId: "...",
+      appId: "...",
+      measurementId: "..."
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
@@ -48,19 +60,19 @@
         <div class="mb-2"><span class="font-bold">ผู้เบิก:</span> <span id="issueActorName">–</span></div>
       </div>
 
-      <!-- สแกน QR เพื่อเพิ่มรายการ -->
       <button id="issScanBtn"
               class="w-full mb-4 bg-red-600 hover:bg-red-500 text-white py-2 rounded">
         สแกน QR เพิ่มรายการ
       </button>
       <video id="issVideo" playsinline class="w-full h-48 object-cover rounded mb-4 hidden"></video>
 
-      <!-- multi-item container -->
       <datalist id="inventoryList"></datalist>
       <div id="issueItemsContainer" class="space-y-2">
         <div class="item-row flex space-x-2">
-          <input list="inventoryList" placeholder="รหัสหรือชื่อสินค้า" class="flex-2 border rounded p-2 code-input" />
-          <input type="number" min="1" value="1" placeholder="จำนวน" class="w-20 border rounded p-2 qty-input" />
+          <input list="inventoryList" placeholder="รหัสหรือชื่อสินค้า"
+                 class="flex-2 border rounded p-2 code-input" />
+          <input type="number" min="1" value="1"
+                 class="w-20 border rounded p-2 qty-input" />
           <button type="button" class="remove-item px-2 text-white bg-red-500 rounded">–</button>
         </div>
       </div>
@@ -78,7 +90,6 @@
         <div class="mb-2"><span class="font-bold">ผู้รับเข้า:</span> <span id="receiveActorName">–</span></div>
       </div>
 
-      <!-- สแกน QR เพื่อรับเข้า -->
       <button id="recvScanBtn"
               class="w-full mb-2 bg-green-600 hover:bg-green-500 text-white py-2 rounded">
         สแกน QR เพื่อรับเข้า
@@ -129,22 +140,6 @@
     const LIFF_ID = '2007335399-rmoYp9Md';
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
 
-  // Firebase config
-  const firebaseConfig = {
-      apiKey: "AIzaSyBOCnA32ir0bHOlfIOvJ_ltAj65A5DJSlk",
-      authDomain: "register-58eea.firebaseapp.com",
-      databaseURL: "https://register-58eea-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "register-58eea",
-      storageBucket: "register-58eea.firebasestorage.app",
-      messagingSenderId: "629204385342",
-      appId: "1:629204385342:web:1d9c20a8b3f57269e09b6f",
-      measurementId: "G-FFLKXCZE64" };
-  
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const storage = firebase.storage();
-
-    // Firebase refs
     const stockRef     = db.ref('stock');
     const receiveRef   = db.ref('receiveRecords');
     const issueRef     = db.ref('issueRecords');
@@ -187,7 +182,7 @@
       document.getElementById('receiveActorName').textContent = borrowerName;
 
       // populate datalists
-      const fill = async id => {
+      async function fill(id){
         const dl = document.getElementById(id);
         const snap = await stockRef.once('value');
         snap.forEach(ch=>{
@@ -196,7 +191,7 @@
           opt.value = `${d.code} ‒ ${d.name}`;
           dl.appendChild(opt);
         });
-      };
+      }
       await fill('inventoryList');
       await fill('inventoryList2');
 
@@ -208,14 +203,12 @@
       currentMode = mode;
       basket = [];
       const video = document.getElementById(mode==='issue'?'issVideo':'recvVideo');
-      navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }})
-        .then(stream=>{
-          video.srcObject = stream;
-          video.play();
-          video.classList.remove('hidden');
-          requestAnimationFrame(()=>tick(video));
-        })
-        .catch(()=>showCustomAlert('ไม่สามารถเข้าถึงกล้องได้'));
+      navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }}).then(stream=>{
+        video.srcObject = stream;
+        video.play();
+        video.classList.remove('hidden');
+        requestAnimationFrame(()=>tick(video));
+      }).catch(()=>showCustomAlert('ไม่สามารถเข้าถึงกล้องได้'));
     }
     function tick(video){
       if(video.readyState===video.HAVE_ENOUGH_DATA){
@@ -256,6 +249,24 @@
         </div>`).join('');
     }
 
+    // Manual addition of items
+    async function addManualIssueItems(){
+      const snap = await stockRef.once('value');
+      const mapName = {};
+      snap.forEach(ch=>{ const d=ch.val(); mapName[d.code]=d.name; });
+      document.querySelectorAll('#issueItemsContainer .item-row').forEach(row=>{
+        const raw = row.querySelector('.code-input').value.trim();
+        const code = raw.split(' ‒ ')[0].trim();
+        const qty  = parseInt(row.querySelector('.qty-input').value)||0;
+        if(!code||qty<1) return;
+        if(!basket.find(x=>x.id===code)){
+          basket.push({ id:code, name:mapName[code]||'(ไม่พบชื่อ)', qty });
+        }
+      });
+      updateIssueBasketUI();
+    }
+    document.getElementById('addIssueItem').onclick = addManualIssueItems;
+
     // bind buttons
     document.getElementById('tabIssueBtn').onclick   = ()=>activateTab(true,false,false);
     document.getElementById('tabReceiveBtn').onclick = ()=>activateTab(false,true,false);
@@ -267,10 +278,7 @@
     async function getAdminIds(){
       const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
       const ids = [];
-      snap.forEach(ch=>{
-        const u = ch.val().userIdLine;
-        if(u) ids.push(u);
-      });
+      snap.forEach(ch=>{ const u=ch.val().userIdLine; if(u)ids.push(u); });
       return ids;
     }
     async function notifyAdmins(action, items){
@@ -367,7 +375,7 @@
           <td class="px-4 py-2">${d.quantity}</td>`;
         tbody.appendChild(tr);
       });
-      const total=Math.max(1,Math.ceil(historyRecords.length/historyPageSize));
+      const total = Math.max(1,Math.ceil(historyRecords.length/historyPageSize));
       document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
       document.getElementById('historyPrev').disabled = historyPage===1;
       document.getElementById('historyNext').disabled = historyPage===total;

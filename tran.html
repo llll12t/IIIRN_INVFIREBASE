@@ -123,9 +123,12 @@
         <datalist id="inventoryList"></datalist>
         <ul id="basketIssue" class="space-y-3 mb-4"></ul>
 
-        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6">
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6 items-center">
           <input list="inventoryList" id="manualCodeIssue" placeholder="รหัสหรือชื่อสินค้า" class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
-          <input type="number" id="manualQtyIssue" min="1" value="1" class="w-full sm:w-24 border border-gray-300 rounded-lg p-3 text-center focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <input type="number" id="manualQtyIssue" min="1" value="1" class="w-24 border border-gray-300 rounded-lg p-3 text-center focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+            <span id="issueCurrentStockDisplay" class="text-sm text-gray-600 whitespace-nowrap"></span>
+          </div>
           <button id="addIssueBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
             เพิ่ม
           </button>
@@ -159,9 +162,12 @@
         <datalist id="inventoryList2"></datalist>
         <ul id="basketReceive" class="space-y-3 mb-4"></ul>
 
-        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6">
+        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mb-6 items-center">
           <input list="inventoryList2" id="manualCodeReceive" placeholder="รหัสหรือชื่อสินค้า" class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
-          <input type="number" id="manualQtyReceive" min="1" value="1" class="w-full sm:w-24 border border-gray-300 rounded-lg p-3 text-center focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <input type="number" id="manualQtyReceive" min="1" value="1" class="w-24 border border-gray-300 rounded-lg p-3 text-center focus:ring-2 focus:ring-primary-light focus:border-primary-light transition-all duration-200" />
+            <span id="receiveCurrentStockDisplay" class="text-sm text-gray-600 whitespace-nowrap"></span>
+          </div>
           <button id="addReceiveBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
             เพิ่ม
           </button>
@@ -414,6 +420,43 @@
     setupScan('scanReceiveBtn','videoReceive','videoReceiveContainer','receive');
 
     /**
+     * Updates the stock display next to the quantity input.
+     * @param {string} inputElementId - ID of the item code/name input field.
+     * @param {string} displayElementId - ID of the span where stock should be displayed.
+     */
+    async function updateStockDisplay(inputElementId, displayElementId) {
+        const inputElement = document.getElementById(inputElementId);
+        const displayElement = document.getElementById(displayElementId);
+        const enteredValue = inputElement.value.trim();
+
+        if (enteredValue === '') {
+            displayElement.textContent = '';
+            return;
+        }
+
+        const code = enteredValue.split(' ‒ ')[0];
+        const snap = await stockRef.child(code).get();
+
+        if (snap.exists()) {
+            const itemData = snap.val();
+            const currentStock = itemData.quantity || 0;
+            displayElement.textContent = `(คงเหลือ: ${currentStock})`;
+            displayElement.classList.remove('text-red-500'); // Reset color
+            if (currentStock === 0) {
+                displayElement.classList.add('text-red-500'); // Highlight if zero stock
+            }
+        } else {
+            displayElement.textContent = '(ไม่พบสินค้า)';
+            displayElement.classList.remove('text-red-500');
+        }
+    }
+
+    // Attach event listeners for updating stock display
+    document.getElementById('manualCodeIssue').addEventListener('input', () => updateStockDisplay('manualCodeIssue', 'issueCurrentStockDisplay'));
+    document.getElementById('manualCodeReceive').addEventListener('input', () => updateStockDisplay('manualCodeReceive', 'receiveCurrentStockDisplay'));
+
+
+    /**
      * Adds an item to the appropriate basket.
      * @param {'issue' | 'receive'} key - Determines which basket to add to.
      * @param {string} code - The item code to add.
@@ -431,17 +474,24 @@
       const existingItem = target.find(x=>x.code===code);
 
       if(existingItem){
-        // If item exists, update its quantity
-        if (key === 'issue' && (existingItem.qty + qtyToAdd) > currentStock) {
-            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (ในตะกร้ามีแล้ว ${existingItem.qty})`, 'error');
-            return;
+        // If item exists, update its quantity (increment for QR, set for manual)
+        if (key === 'issue') {
+            // For issue, check if new total quantity exceeds current stock
+            const potentialNewQty = existingItem.qty + qtyToAdd;
+            if (potentialNewQty > currentStock) {
+                showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (ในตะกร้ามีแล้ว ${existingItem.qty})`, 'error');
+                return;
+            }
+            existingItem.qty = potentialNewQty; // Increment for QR scan (+1)
+            showAlert(`เพิ่มสินค้า "${d.name}" ในตะกร้าอีก ${qtyToAdd} ชิ้น รวมเป็น ${existingItem.qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
+        } else { // Receive
+            existingItem.qty += qtyToAdd; // Always increment for receive via QR
+            showAlert(`เพิ่มสินค้า "${d.name}" ในตะกร้าอีก ${qtyToAdd} ชิ้น รวมเป็น ${existingItem.qty} ชิ้น`, 'success');
         }
-        existingItem.qty += qtyToAdd; // Increment quantity
-        showAlert(`เพิ่มสินค้า "${d.name}" ในตะกร้าอีก ${qtyToAdd} ชิ้น รวมเป็น ${existingItem.qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
       } else {
         // If new item, add to basket
         if (key === 'issue' && qtyToAdd > currentStock) {
-             showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
+             showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น (คงเหลือ: ${currentStock})`, 'error');
              return;
         }
         target.push({ code, name:d.name, qty:qtyToAdd });
@@ -459,40 +509,39 @@
       const qty = +document.getElementById('manualQtyIssue').value;
 
       if(!code || qty < 1) {
-        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง');
+        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง', 'error');
       }
 
       const snap = await stockRef.child(code).get();
       if(!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`);
+        showAlert(`ไม่พบสินค้า "${code}"`, 'error');
         return;
       }
       const d = snap.val();
       const currentStock = d.quantity || 0;
       const existingItem = basketIssue.find(x => x.code === code);
 
+      if (qty > currentStock) {
+          showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
+          return;
+      }
+
       if (existingItem) {
-        if (qty > currentStock) {
-            showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
-            return;
-        }
-        if (existingItem.qty !== qty) {
-            existingItem.qty = qty; // Overwrite for manual input
-            showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
-        } else {
-            showAlert(`สินค้า "${d.name}" จำนวน ${qty} ชิ้น อยู่ในตะกร้าแล้ว (คงเหลือ: ${currentStock})`, 'success');
-        }
+          // For manual input, if item exists, set its quantity to the new value
+          if (existingItem.qty !== qty) {
+              existingItem.qty = qty; 
+              showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty} ชิ้น (คงเหลือ: ${currentStock})`, 'success');
+          } else {
+              showAlert(`สินค้า "${d.name}" จำนวน ${qty} ชิ้น อยู่ในตะกร้าแล้ว`, 'success');
+          }
       } else {
-        if (qty > currentStock) {
-             showAlert(`สินค้า "${d.name}" มีไม่พอ เบิกได้สูงสุด ${currentStock} ชิ้น`, 'error');
-             return;
-        }
-        basketIssue.push({ code, name: d.name, qty: qty }); // Add new item
-        showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น เข้าตะกร้า (คงเหลือ: ${currentStock})`, 'success');
+          basketIssue.push({ code, name: d.name, qty: qty }); // Add new item
+          showAlert(`เพิ่ม "${d.name}" จำนวน ${qty} ชิ้น เข้าตะกร้า (คงเหลือ: ${currentStock})`, 'success');
       }
       updateBasket('basketIssue', basketIssue, 'submitIssueBtn');
       document.getElementById('manualCodeIssue').value = ''; // Clear input
       document.getElementById('manualQtyIssue').value = '1'; // Reset quantity
+      updateStockDisplay('manualCodeIssue', 'issueCurrentStockDisplay'); // Clear stock display
     };
 
     /**
@@ -504,22 +553,22 @@
       const qty = +document.getElementById('manualQtyReceive').value;
 
       if(!code || qty < 1) {
-        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง');
+        return showAlert('กรุณาระบุรหัสหรือชื่อสินค้าและจำนวนให้ถูกต้อง', 'error');
       }
 
       const snap = await stockRef.child(code).get();
       if(!snap.exists()) {
-        showAlert(`ไม่พบสินค้า "${code}"`);
+        showAlert(`ไม่พบสินค้า "${code}"`, 'error');
         return;
       }
       const d = snap.val();
-      const currentStock = d.quantity || 0;
+      // No stock check needed for receive
       const existingItem = basketReceive.find(x => x.code === code);
 
       if (existingItem) {
-        // No stock check needed for receive, just update quantity
+        // For manual input, if item exists, set its quantity to the new value
         if (existingItem.qty !== qty) {
-            existingItem.qty = qty; // Overwrite for manual input
+            existingItem.qty = qty; 
             showAlert(`อัปเดตจำนวนสินค้า "${d.name}" เป็น ${qty} ชิ้น`, 'success');
         } else {
             showAlert(`สินค้า "${d.name}" จำนวน ${qty} ชิ้น อยู่ในตะกร้าแล้ว`, 'success');
@@ -531,6 +580,7 @@
       updateBasket('basketReceive', basketReceive, 'submitReceiveBtn');
       document.getElementById('manualCodeReceive').value = ''; // Clear input
       document.getElementById('manualQtyReceive').value = '1'; // Reset quantity
+      updateStockDisplay('manualCodeReceive', 'receiveCurrentStockDisplay'); // Clear stock display
     };
 
     /**
@@ -736,7 +786,7 @@
           await stockRef.child(it.code).child('quantity').transaction(c => (c || 0) - it.qty);
         }
 
-        // --- Create Flex Message for LIFF ---
+        // --- Create Flex Message for LIFF (for user themselves) ---
         const flexMessageBubble = createFlexMessageContent('issue', actorIssue, itemsToProcess);
         
         // Send Flex Message via LIFF to the user themselves
@@ -782,7 +832,7 @@
           await stockRef.child(it.code).child('quantity').transaction(c=> (c || 0) + it.qty); // Ensure c is not null/undefined for increment
         }
 
-        // --- Create Flex Message for LIFF ---
+        // --- Create Flex Message for LIFF (for user themselves) ---
         const flexMessageBubble = createFlexMessageContent('receive', actorReceive, itemsToProcess);
 
         // Send Flex Message via LIFF to the user themselves

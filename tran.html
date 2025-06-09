@@ -20,8 +20,7 @@
 
   <!-- Alert -->
   <div id="customAlert"
-       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50">
-  </div>
+       class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded shadow hidden z-50"></div>
 
   <div class="max-w-lg mx-auto p-6 space-y-6">
     <!-- Tabs -->
@@ -148,8 +147,8 @@
 
   <script>
     // Configuration
-    const LIFF_ID  = '2007335399-rmoYp9Md';
-    const GAS_URL  = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';  // เปลี่ยนเป็น URL ของคุณ
+    const LIFF_ID = '2007335399-rmoYp9Md';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec';
 
     // Firebase refs
     const stockRef     = db.ref('stock');
@@ -158,38 +157,36 @@
     const employeesRef = db.ref('employees');
 
     let userIdLine = '', borrowerName = '';
+    let historyRecords = [], historyPage = 1;
+    const historyPageSize = 15;
 
-    // ดึง userIdLine ของ admin ทั้งหมด
-    async function getAdminIds() {
-      const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
-      const ids = [];
-      snap.forEach(ch => {
-        const u = ch.val().userIdLine;
-        if (u) ids.push(u);
-      });
-      return ids;
+    // Tab logic
+    const tabIssueBtn   = document.getElementById('tabIssueBtn');
+    const tabReceiveBtn = document.getElementById('tabReceiveBtn');
+    const tabHistoryBtn = document.getElementById('tabHistoryBtn');
+    const tabIssue      = document.getElementById('tabIssue');
+    const tabReceive    = document.getElementById('tabReceive');
+    const tabHistory    = document.getElementById('tabHistory');
+    function activateTab(issue, receive, history) {
+      tabIssue.classList.toggle('hidden', !issue);
+      tabReceive.classList.toggle('hidden', !receive);
+      tabHistory.classList.toggle('hidden', !history);
+      tabIssueBtn.classList.toggle('border-primary', issue);
+      tabReceiveBtn.classList.toggle('border-primary', receive);
+      tabHistoryBtn.classList.toggle('border-primary', history);
     }
+    tabIssueBtn.onclick   = () => activateTab(true,false,false);
+    tabReceiveBtn.onclick = () => activateTab(false,true,false);
+    tabHistoryBtn.onclick = () => { activateTab(false,false,true); loadHistory(); };
 
-    // ส่ง POST ไปยัง GAS พร้อม action, code, name, qty, user และ toList
-    async function notifyAdmins(action, code, name, qty, user) {
-      const adminIds = await getAdminIds();
-      if (adminIds.length === 0) return;
-      await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, code, name, qty, user, toList: adminIds })
-      });
-    }
-
-    // สร้างฟังก์ชันช่วยแสดง alert
     function showCustomAlert(msg) {
       const a = document.getElementById('customAlert');
       a.textContent = msg;
       a.classList.remove('hidden');
-      setTimeout(() => a.classList.add('hidden'), 3000);
+      setTimeout(()=>a.classList.add('hidden'),3000);
     }
 
-    // ฟังก์ชัน init LIFF + โหลดข้อมูล user
+    // LIFF init & load data
     window.onload = async () => {
       await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
       if (!liff.isInClient() && !liff.isLoggedIn()) {
@@ -198,43 +195,113 @@
       }
       const profile = await liff.getProfile();
       userIdLine = profile.userId;
-      // ดึงชื่อผู้ทำรายการจาก employees
-      const empSnap = await employeesRef.orderByChild('userIdLine').equalTo(userIdLine).get();
+
+      // Get user name
+      const empSnap = await employeesRef.orderByChild('userIdLine')
+                                        .equalTo(userIdLine).get();
       borrowerName = empSnap.exists()
         ? Object.values(empSnap.val())[0].fullName
         : 'ไม่ทราบชื่อ';
+      document.getElementById('issueActorName').textContent   = borrowerName;
+      document.getElementById('receiveActorName').textContent = borrowerName;
 
-      // เตรียม datalist สินค้า
-      stockRef.once('value').then(snap => {
-        snap.forEach(ch => {
+      // Populate product lists
+      stockRef.once('value').then(snap=>{
+        snap.forEach(ch=>{
           const d = ch.val();
-          const opt1 = document.createElement('option');
-          opt1.value = `${d.code} ‒ ${d.name}`;
-          document.getElementById('inventoryList').appendChild(opt1);
+          ['inventoryList','inventoryList2'].forEach(listId=>{
+            const dl = document.getElementById(listId);
+            const opt = document.createElement('option');
+            opt.value = `${d.code} ‒ ${d.name}`;
+            dl.appendChild(opt);
+          });
         });
       });
+
+      activateTab(true,false,false);
     };
 
-    // เบิกสินค้า: ตรวจสอบ → บันทึก → ส่ง LIFF → notifyAdmins → เคลียร์ form
-    document.getElementById('issSubmit').onclick = async () => {
-      // อ่านค่า code, qty, name
-      const raw  = document.getElementById('issCodeInput').value;
-      const code = raw.split(' ‒ ')[0].trim();
+    // Bind inventory display
+    function bindInventory(inputId, codeDisp, nameDisp, remainDisp) {
+      document.getElementById(inputId).addEventListener('input', async ev=>{
+        const raw = ev.target.value;
+        const code = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
+        if (!code) return;
+        const snap = await stockRef.child(code).get();
+        if (!snap.exists()) { showCustomAlert('ไม่พบสินค้า'); return; }
+        const d = snap.val();
+        document.getElementById(codeDisp).textContent   = d.code;
+        document.getElementById(nameDisp).textContent   = d.name;
+        document.getElementById(remainDisp).textContent = d.quantity;
+      });
+    }
+    bindInventory('issCodeInput','issCodeDisplay','issNameDisplay','issRemainDisplay');
+    bindInventory('recvCodeInput','recvCodeDisplay','recvNameDisplay','recvRemainDisplay');
+
+    // QR scan helper
+    function setupScan(btnId, videoId, inputId) {
+      const canvas = document.createElement('canvas');
+      const ctx    = canvas.getContext('2d');
+      document.getElementById(btnId).onclick = async ()=>{
+        const video = document.getElementById(videoId);
+        const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
+        video.srcObject=stream; video.play(); video.classList.remove('hidden');
+        (function scan(){
+          if(video.readyState===video.HAVE_ENOUGH_DATA){
+            canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+            ctx.drawImage(video,0,0);
+            const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
+            if(code){
+              document.getElementById(inputId).value = code.data.trim();
+              document.getElementById(inputId).dispatchEvent(new Event('input'));
+              video.srcObject.getTracks().forEach(t=>t.stop());
+              video.classList.add('hidden');
+              return;
+            }
+          }
+          requestAnimationFrame(scan);
+        })();
+      };
+    }
+    setupScan('issScanBtn','issVideo','issCodeInput');
+    setupScan('recvScanBtn','recvVideo','recvCodeInput');
+
+    // Fetch admin IDs
+    async function getAdminIds() {
+      const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
+      const ids = [];
+      snap.forEach(ch=>{
+        const u = ch.val().userIdLine;
+        if(u) ids.push(u);
+      });
+      return ids;
+    }
+
+    // Notify admins via GAS
+    async function notifyAdmins(action, code, name, qty, user) {
+      const adminIds = await getAdminIds();
+      if(adminIds.length===0) return;
+      await fetch(GAS_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ action, code, name, qty, user, toList: adminIds })
+      });
+    }
+
+    // Issue submit
+    document.getElementById('issSubmit').onclick = async ()=>{
+      const code = document.getElementById('issCodeDisplay').textContent;
       const qty  = +document.getElementById('issQty').value;
-      if (!code)      return showCustomAlert('กรุณาเลือกสินค้า');
-      if (qty < 1)     return showCustomAlert('จำนวนไม่ถูกต้อง');
-      // ตรวจ stock
-      const snap     = await stockRef.child(code).get();
-      const avail    = snap.val().quantity || 0;
-      if (avail < qty) return showCustomAlert('จำนวนเบิกเกินสต็อก');
-      // เตรียมข้อมูล
-      const name     = snap.val().name;
+      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      const snap = await stockRef.child(code).get();
+      const avail = snap.val().quantity||0;
+      if(avail<=0)    return showCustomAlert('สินค้าหมด');
+      if(qty>avail)   return showCustomAlert('เบิกเกินจำนวนคงเหลือ');
       const recordId = issueRef.push().key;
       const now      = new Date().toISOString();
-      // บันทึกลง Firebase
+      const name     = document.getElementById('issNameDisplay').textContent;
       await issueRef.child(recordId).set({
-        id: recordId,
-        date: now,
+        id: recordId, date: now,
         timestamp: firebase.database.ServerValue.TIMESTAMP,
         borrower: borrowerName,
         userId: userIdLine,
@@ -242,34 +309,26 @@
         itemName: name,
         quantity: qty
       });
-      await stockRef.child(code).child('quantity').transaction(c => (c||0) - qty);
-      // ส่งข้อความกลับผู้ใช้
-      await liff.sendMessages([{
-        type: 'text',
-        text: `📤 เบิกสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้เบิก: ${borrowerName}`
-      }]);
-      // ส่ง POST แจ้ง admin
+      await stockRef.child(code).child('quantity').transaction(c=>c-qty);
+      await liff.sendMessages([{ type:'text', text:
+        `📤 เบิกสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้เบิก: ${borrowerName}` }]);
       await notifyAdmins('issue', code, name, qty, borrowerName);
-      // เคลียร์ฟอร์ม
-      document.getElementById('issCodeInput').value = '';
-      document.getElementById('issQty').value      = '1';
+      document.getElementById('issCodeInput').value='';
+      document.getElementById('issQty').value='1';
       showCustomAlert('เบิกเรียบร้อย');
     };
 
-    // ฟังก์ชันรับเข้า จะคล้ายกัน เปลี่ยน ref เป็น receiveRef และ prefix เป็น "📥 รับเข้าสินค้า"
-    document.getElementById('recvSubmit').onclick = async () => {
-      const raw  = document.getElementById('recvCodeInput').value;
-      const code = raw.split(' ‒ ')[0].trim();
+    // Receive submit
+    document.getElementById('recvSubmit').onclick = async ()=>{
+      const code = document.getElementById('recvCodeDisplay').textContent;
       const qty  = +document.getElementById('recvQty').value;
-      if (!code)  return showCustomAlert('กรุณาเลือกสินค้า');
-      if (qty<1)  return showCustomAlert('จำนวนไม่ถูกต้อง');
-      const snap     = await stockRef.child(code).get();
-      const name     = snap.val().name;
+      if(!code) return showCustomAlert('กรุณาเลือกสินค้า');
+      if(qty<1) return showCustomAlert('จำนวนไม่ถูกต้อง');
       const recordId = receiveRef.push().key;
       const now      = new Date().toISOString();
+      const name     = document.getElementById('recvNameDisplay').textContent;
       await receiveRef.child(recordId).set({
-        id: recordId,
-        date: now,
+        id: recordId, date: now,
         timestamp: firebase.database.ServerValue.TIMESTAMP,
         borrower: borrowerName,
         userId: userIdLine,
@@ -277,15 +336,51 @@
         itemName: name,
         quantity: qty
       });
-      await stockRef.child(code).child('quantity').transaction(c => (c||0) + qty);
-      await liff.sendMessages([{
-        type: 'text',
-        text: `📥 รับเข้าสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้รับเข้า: ${borrowerName}`
-      }]);
+      await stockRef.child(code).child('quantity').transaction(c=>c+qty);
+      await liff.sendMessages([{ type:'text', text:
+        `📥 รับเข้าสินค้า\nรหัส: ${code}\nชื่อ: ${name}\nจำนวน: ${qty}\nผู้รับเข้า: ${borrowerName}` }]);
       await notifyAdmins('receive', code, name, qty, borrowerName);
-      document.getElementById('recvCodeInput').value = '';
-      document.getElementById('recvQty').value      = '1';
+      document.getElementById('recvCodeInput').value='';
+      document.getElementById('recvQty').value='1';
       showCustomAlert('รับเข้าเรียบร้อย');
+    };
+
+    // Load & render history
+    async function loadHistory() {
+      const [rSnap,iSnap] = await Promise.all([
+        receiveRef.once('value'),
+        issueRef.once('value')
+      ]);
+      const recs = [];
+      rSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'receive'}); });
+      iSnap.forEach(ch=>{ const d=ch.val(); if(d.userId===userIdLine) recs.push({...d,type:'issue'}); });
+      recs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+      historyRecords=recs; historyPage=1; renderHistory();
+    }
+    function renderHistory() {
+      const start=(historyPage-1)*historyPageSize;
+      const page=historyRecords.slice(start,start+historyPageSize);
+      const tbody=document.getElementById('historyTable'); tbody.innerHTML='';
+      page.forEach(d=>{
+        const cls=d.type==='receive'?'bg-green-50':'bg-red-50';
+        const tr=document.createElement('tr'); tr.className=cls;
+        tr.innerHTML=`
+          <td class="px-4 py-2">${new Date(d.date).toLocaleDateString('th-TH')}</td>
+          <td class="px-4 py-2">${d.itemName}</td>
+          <td class="px-4 py-2">${d.quantity}</td>`;
+        tbody.appendChild(tr);
+      });
+      const total=Math.ceil(historyRecords.length/historyPageSize)||1;
+      document.getElementById('historyPageInfo').textContent=`หน้าที่ ${historyPage} จาก ${total}`;
+      document.getElementById('historyPrev').disabled=historyPage===1;
+      document.getElementById('historyNext').disabled=historyPage===total;
+    }
+    document.getElementById('historyPrev').onclick=()=>{
+      if(historyPage>1){historyPage--; renderHistory();}
+    };
+    document.getElementById('historyNext').onclick=()=>{
+      const t=Math.ceil(historyRecords.length/historyPageSize);
+      if(historyPage<t){historyPage++; renderHistory();}
     };
   </script>
 </body>

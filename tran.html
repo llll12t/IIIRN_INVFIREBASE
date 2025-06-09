@@ -146,11 +146,11 @@
   </div>
 
   <script>
-    // === Configuration ===
-    const LIFF_ID = '2007335399-rmoYp9Md';  // ใส่ LIFF ID ของคุณ
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; // ใส่ URL Web App ของคุณ
+    // Configuration
+    const LIFF_ID  = '2007335399-rmoYp9Md';  // เปลี่ยนเป็น LIFF ID ของคุณ
+    const GAS_URL  = 'https://script.google.com/macros/s/AKfycbz-x6XGsMhuhkWOlBh8NAoVuiOopCXZdqJ_G3lyiUW5pq0TOGJToiqxHM2Rsit2xSVB/exec'; // เปลี่ยนเป็น URL Web App
 
-    // === Firebase refs ===
+    // Firebase refs
     const stockRef     = db.ref('stock');
     const receiveRef   = db.ref('receiveRecords');
     const issueRef     = db.ref('issueRecords');
@@ -160,14 +160,13 @@
     let historyRecords = [], historyPage = 1;
     const historyPageSize = 15;
 
-    // === Tab handling ===
+    // Tab handling
     const tabIssueBtn   = document.getElementById('tabIssueBtn');
     const tabReceiveBtn = document.getElementById('tabReceiveBtn');
     const tabHistoryBtn = document.getElementById('tabHistoryBtn');
     const tabIssue      = document.getElementById('tabIssue');
     const tabReceive    = document.getElementById('tabReceive');
     const tabHistory    = document.getElementById('tabHistory');
-
     function activateTab(issue, receive, history) {
       tabIssue.classList.toggle('hidden', !issue);
       tabReceive.classList.toggle('hidden', !receive);
@@ -187,7 +186,7 @@
       setTimeout(()=>a.classList.add('hidden'),3000);
     }
 
-    // === LIFF init & load ===
+    // LIFF init & load
     window.onload = async () => {
       await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
       if (!liff.isInClient() && !liff.isLoggedIn()) {
@@ -197,7 +196,7 @@
       const profile = await liff.getProfile();
       userIdLine = profile.userId;
 
-      // ดึงชื่อผู้ใช้จากฐาน employees
+      // Get user name
       const empSnap = await employeesRef.orderByChild('userIdLine')
                                         .equalTo(userIdLine).get();
       borrowerName = empSnap.exists()
@@ -206,7 +205,7 @@
       document.getElementById('issueActorName').textContent   = borrowerName;
       document.getElementById('receiveActorName').textContent = borrowerName;
 
-      // เติม datalist สินค้า
+      // Populate product lists
       stockRef.once('value').then(snap=>{
         snap.forEach(ch=>{
           const d = ch.val();
@@ -222,9 +221,9 @@
       activateTab(true,false,false);
     };
 
-    // === Bind inventory display ===
+    // Bind inventory display
     function bindInventory(inputId, codeDisp, nameDisp, remainDisp) {
-      document.getElementById(inputId).addEventListener('input', async ev => {
+      document.getElementById(inputId).addEventListener('input', async ev=>{
         const raw = ev.target.value;
         const code = raw.includes(' ‒ ') ? raw.split(' ‒ ')[0].trim() : raw.trim();
         if (!code) return;
@@ -239,14 +238,14 @@
     bindInventory('issCodeInput','issCodeDisplay','issNameDisplay','issRemainDisplay');
     bindInventory('recvCodeInput','recvCodeDisplay','recvNameDisplay','recvRemainDisplay');
 
-    // === QR scan ===
+    // QR scan setup
     function setupScan(btnId, videoId, inputId) {
       const canvas = document.createElement('canvas');
       const ctx    = canvas.getContext('2d');
       document.getElementById(btnId).onclick = async ()=>{
         const video = document.getElementById(videoId);
         const stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'} });
-        video.srcObject = stream; video.play(); video.classList.remove('hidden');
+        video.srcObject=stream; video.play(); video.classList.remove('hidden');
         (function scan(){
           if(video.readyState===video.HAVE_ENOUGH_DATA){
             canvas.width=video.videoWidth; canvas.height=video.videoHeight;
@@ -267,29 +266,26 @@
     setupScan('issScanBtn','issVideo','issCodeInput');
     setupScan('recvScanBtn','recvVideo','recvCodeInput');
 
-    // === ดึง admin IDs ===
+    // Fetch admin IDs
     async function getAdminIds() {
       const snap = await employeesRef.orderByChild('role').equalTo('admin').get();
       const ids = [];
-      snap.forEach(ch=>{
-        const u = ch.val().userIdLine;
-        if(u) ids.push(u);
-      });
+      snap.forEach(ch=>{ const u=ch.val().userIdLine; if(u) ids.push(u); });
       return ids;
     }
 
-    // === notify admins via GAS ===
+    // Notify admins via GAS
     async function notifyAdmins(action, code, name, qty, user) {
       const adminIds = await getAdminIds();
-      if(adminIds.length===0) return;
+      if (!adminIds.length) return;
       await fetch(GAS_URL, {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ action, code, name, qty, user, toList: adminIds })
+        body: JSON.stringify({ action, code, name, qty, user, userId:userIdLine, toList:adminIds })
       });
     }
 
-    // === เบิก submit ===
+    // Issue submit
     document.getElementById('issSubmit').onclick = async ()=>{
       const code = document.getElementById('issCodeDisplay').textContent;
       const qty  = +document.getElementById('issQty').value;
@@ -319,7 +315,7 @@
       showCustomAlert('เบิกเรียบร้อย');
     };
 
-    // === รับเข้า submit ===
+    // Receive submit
     document.getElementById('recvSubmit').onclick = async ()=>{
       const code = document.getElementById('recvCodeDisplay').textContent;
       const qty  = +document.getElementById('recvQty').value;
@@ -346,7 +342,7 @@
       showCustomAlert('รับเข้าเรียบร้อย');
     };
 
-    // === Load & render history ===
+    // Load & render history
     async function loadHistory() {
       const [rSnap,iSnap] = await Promise.all([
         receiveRef.once('value'),

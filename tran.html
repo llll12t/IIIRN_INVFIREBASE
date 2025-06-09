@@ -276,13 +276,14 @@
     async function notifyAdmins(action, code, name, qty, user) {
       const adminIds = await getAdminIds();
       if (!adminIds.length) return;
-      await fetch(GAS_URL, {
-        method:'POST',
-        mode:   'no-cors',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ action, code, name, qty, user, userId: userIdLine, toList: adminIds })
-      });
-    }
+await fetch(GAS_URL, {
+     method: 'POST',
+     mode:   'no-cors',
+     headers:{ 'Content-Type':'application/json' },
+     body:    JSON.stringify(payload)
+   });
+   showCustomAlert('ทดสอบแจ้งเตือนสั่ง POST เรียบร้อย');
+  };
 
     // Issue submit
     document.getElementById('issSubmit').onclick = async ()=>{

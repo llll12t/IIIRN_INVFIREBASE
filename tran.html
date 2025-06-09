@@ -276,14 +276,13 @@
     async function notifyAdmins(action, code, name, qty, user) {
       const adminIds = await getAdminIds();
       if (!adminIds.length) return;
-await fetch(GAS_URL, {
-     method: 'POST',
-     mode:   'no-cors',
-     headers:{ 'Content-Type':'application/json' },
-     body:    JSON.stringify(payload)
-   });
-   showCustomAlert('ทดสอบแจ้งเตือนสั่ง POST เรียบร้อย');
-  };
+      await fetch(GAS_URL, {
+       method: 'POST',
+       headers:{ 'Content-Type':'application/json' },
+       body:    JSON.stringify(payload)
+     });
+     showCustomAlert('ทดสอบแจ้งเตือนสั่ง POST เรียบร้อย');
+    };
 
     // Issue submit
     document.getElementById('issSubmit').onclick = async ()=>{
@@ -376,30 +375,31 @@ await fetch(GAS_URL, {
       const t=Math.ceil(historyRecords.length/historyPageSize);
       if(historyPage<t){historyPage++; renderHistory();}};
 
-    // Test notify button
-    document.getElementById('testNotifyBtn').onclick = async () => {
-      const adminIds = await getAdminIds();
-      console.log('Admin IDs:', adminIds);
-      const payload = {
-        action: 'issue',
-        code:   'TEST001',
-        name:   'ทดสอบสินค้า',
-        qty:    1,
-        user:   borrowerName,
-        userId: userIdLine,
-        toList: adminIds
-      };
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      console.log('GAS response:', json);
-      showCustomAlert(json.status === 'success'
-        ? 'ทดสอบแจ้งเตือนส่งเรียบร้อย'
-        : 'ทดสอบล้มเหลว: ' + (json.message||''));
+  document.getElementById('testNotifyBtn').onclick = async () => {
+    const adminIds = await getAdminIds();
+    console.log('Admin IDs:', adminIds);
+
+    const payload = {
+      action: 'issue',
+      code:   'TEST001',
+      name:   'ทดสอบสินค้า',
+      qty:    1,
+      user:   borrowerName,
+      userId: userIdLine,
+      toList: adminIds
     };
+
+
+   // ไม่มี preflight CORS → ใช้ no-cors
+   await fetch(GAS_URL, {
+     method: 'POST',
+     mode:   'no-cors',
+     headers:{ 'Content-Type':'application/json' },
+     body:    JSON.stringify(payload)
+   });
+   showCustomAlert('ทดสอบแจ้งเตือนสั่ง POST เรียบร้อย');
+  };
+
   </script>
 </body>
 </html>

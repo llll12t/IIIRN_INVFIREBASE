@@ -40,7 +40,8 @@
     <video id="video" playsinline class="w-full h-80 object-cover rounded-lg mb-4 hidden"></video>
 
     <div class="space-y-4">
-      <input id="deviceId" type="text" placeholder="รหัสอุปกรณ์" readonly
+      <!-- Allow manual input of device code -->
+      <input id="deviceId" type="text" placeholder="รหัสอุปกรณ์ (สแกนหรือกรอกเองได้)"
              class="w-full border border-gray-300 rounded-lg p-2" />
       <input id="deviceName" type="text" placeholder="ชื่ออุปกรณ์" readonly
              class="w-full border border-gray-300 rounded-lg p-2" />
@@ -112,7 +113,7 @@
       document.getElementById("reporterName").textContent = reporterName;
     };
 
-    // ฟังก์ชันดึง admin IDs
+    // ดึง admin IDs
     async function getAdminIds() {
       const snap = await db.ref('employees')
         .orderByChild('role').equalTo('admin').get();
@@ -124,8 +125,8 @@
       return ids;
     }
 
-    // สร้าง Flex Message สำหรับผู้แจ้ง
-    function buildUserRepairFlex(user, dev, devName, title, details) {
+    // สร้าง Flex Message สำหรับผู้แจ้ง พร้อมวันที่
+    function buildUserRepairFlex(user, dateStr, dev, devName, title, details) {
       return {
         type: "bubble",
         header: {
@@ -134,50 +135,35 @@
             type: "text",
             text: "⚙️ แจ้งซ่อมอุปกรณ์",
             weight: "bold",
-            size: "md",
+            size: "xl",
             color: "#FFFFFF",
             align: "center"
           }]
         },
         body: {
-          type: "box", layout: "vertical", spacing: "md", paddingAll: "lg",
+          type: "box", layout: "vertical", spacing: "sm", paddingAll: "lg",
           contents: [
-            {
-              type: "text",
-              text: `ผู้แจ้ง: ${user}`,
-              size: "sm",
-              wrap: true
-            },
-            {
-              type: "text",
-              text: `รหัส: ${dev}`,
-              size: "sm",
-              wrap: true
-            },
-            {
-              type: "text",
-              text: `ชื่อ: ${devName}`,
-              size: "sm",
-              wrap: true
-            },
-            {
-              type: "text",
-              text: `หัวข้อ: ${title}`,
-              size: "sm",
-              wrap: true
-            },
-            {
-              type: "text",
-              text: `รายละเอียด: ${details}`,
-              size: "sm",
-              wrap: true
-            }
+            { type: "text", text: `ผู้แจ้ง: ${user}`, size: "sm", wrap: true },
+            { type: "text", text: `วันที่: ${dateStr}`, size: "sm", wrap: true },
+            { type: "text", text: `รหัส: ${dev}`, size: "sm", wrap: true },
+            { type: "text", text: `ชื่อ: ${devName}`, size: "sm", wrap: true },
+            { type: "text", text: `หัวข้อ: ${title}`, size: "sm", wrap: true },
+            { type: "text", text: `รายละเอียด: ${details}`, size: "sm", wrap: true }
           ]
+        },
+        footer: {
+          type: "box", layout: "vertical", spacing: "sm",
+          contents: [{
+            type: "button",
+            action: { type: "uri", label: "ดูรายละเอียด", uri: LIFF_WEB_URL },
+            style: "primary",
+            color: "#1976D2"
+          }]
         }
       };
     }
 
-    // ฟังก์ชันแจ้งเตือน admin ผ่าน GAS
+    // แจ้งเตือน admin ผ่าน GAS
     async function notifyAdminsRepair(dev, title, details) {
       const admins = await getAdminIds();
       if (!admins.length) return;
@@ -277,14 +263,18 @@
 
     // บันทึกลง Firebase + ส่งแจ้งเตือน
     async function submitRepair() {
-      const id     = db.ref().child('repairReports').push().key;
-      const now    = new Date().toISOString();
-      const dev    = document.getElementById('deviceId').value.trim();
-      const devName= document.getElementById('deviceName').value.trim();
-      const ti     = document.getElementById('title').value.trim();
-      const dt     = document.getElementById('details').value.trim();
-      const file   = document.getElementById('imageInput').files[0];
-      let imageUrl = '';
+      const id      = db.ref().child('repairReports').push().key;
+      const now     = new Date();
+      const dateStr = now.toLocaleString('th-TH', {
+        day: 'numeric', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+      const dev     = document.getElementById('deviceId').value.trim();
+      const devName = document.getElementById('deviceName').value.trim();
+      const ti      = document.getElementById('title').value.trim();
+      const dt      = document.getElementById('details').value.trim();
+      const file    = document.getElementById('imageInput').files[0];
+      let imageUrl  = '';
 
       if (file) {
         const snap = await storage.ref(`repair_images/${id}`).put(file);
@@ -292,7 +282,7 @@
       }
 
       await db.ref(`repairReports/${id}`).set({
-        id, date: now, timestamp: firebase.database.ServerValue.TIMESTAMP,
+        id, date: now.toISOString(), timestamp: firebase.database.ServerValue.TIMESTAMP,
         reporterName, userIdLine,
         deviceId: dev, deviceName: devName,
         title: ti, details: dt,
@@ -305,8 +295,8 @@
         lastUserId: userIdLine
       });
 
-      // ส่ง Flex Message ให้ผู้แจ้ง
-      const flexContent = buildUserRepairFlex(reporterName, dev, devName, ti, dt);
+      // ส่ง Flex Message ให้ผู้แจ้ง พร้อมวันที่
+      const flexContent = buildUserRepairFlex(reporterName, dateStr, dev, devName, ti, dt);
       await liff.sendMessages([{
         type: 'flex',
         altText: '⚙️ แจ้งซ่อมอุปกรณ์',

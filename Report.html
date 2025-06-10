@@ -15,11 +15,18 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <script src="firebase-config.js"></script>
   <script>
-    tailwind.config = { theme: { extend: {
-    colors: {
-    primary: '#000000',
-    secondary: '#FFFFFF',
-    } } } }
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#000000', // ควรเปลี่ยนเป็นสีที่เหมาะกับ Theme ของคุณ
+            secondary: '#FFFFFF',
+            orange: '#E65100', // เพิ่มสีส้มสำหรับแจ้งซ่อม
+            lightOrange: '#FFE0B2'
+          }
+        }
+      }
+    }
   </script>
 </head>
 
@@ -51,11 +58,11 @@
       <textarea id="details" placeholder="รายละเอียดเพิ่มเติม"
         class="w-full border border-gray-300 rounded-lg p-2"></textarea>
       <input id="imageInput" type="file" accept="image/*" class="w-full" />
-       <img id="previewImage" src="#" alt="Preview" class="w-48 rounded-lg hidden" />
+      <img id="previewImage" src="#" alt="Preview" class="w-48 rounded-lg hidden" />
     </div>
 
     <button id="openConfirmBtn"
-      class="w-full my-6 flex items-center justify-center gap-2 bg-primary hover:bg-primary text-white py-3 px-4 rounded-full">
+      class="w-full my-6 flex items-center justify-center gap-2 bg-orange hover:bg-orange-700 text-white py-3 px-4 rounded-full">
       ส่งแจ้งซ่อม
     </button>
     <p id="statusText" class="mt-4 text-primary text-center font-medium"></p>
@@ -69,7 +76,7 @@
           <button id="cancelBtn"
             class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">ยกเลิก</button>
           <button id="confirmBtn"
-            class="px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white flex items-center justify-center gap-2">
+            class="px-4 py-2 rounded-lg bg-orange hover:bg-orange-700 text-white flex items-center justify-center gap-2">
             ยืนยัน
           </button>
         </div>
@@ -78,55 +85,106 @@
   </div>
 
   <script>
+    // **********************************************
+    // ⚠️ สำคัญมาก: เปลี่ยนค่านี้เป็น URL ของ GAS Web App ที่ Deploy แล้ว ⚠️
+    // ไปที่ Google Apps Script -> Deploy -> New deployment -> Web app -> เลือก "Anyone"
+    // คัดลอก URL ที่ได้มาวางที่นี่
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzhZ-isEXQWK4IFVI7ROkvmHR77QS_b9rKcDux16wrW5vr_wYvNEz8UT92yJwLcGNQq/exec';
+    // **********************************************
+
     // LIFF init
-    let userIdLine = "", reporterName = "";
+    let userIdLine = "";
+    let reporterName = "";
+    let LIFF_ID_REPORT = '2007335399-rmoYp9Md'; // ควรอยู่ใน firebase-config.js หรือระบุที่นี่
 
     // ฟังก์ชัน Custom Alert
-    function showCustomAlert(msg) {
+    function showCustomAlert(msg, type = 'error') {
       const alertBox = document.getElementById('customAlert');
       alertBox.textContent = msg;
+      if (type === 'success') {
+        alertBox.classList.remove('bg-red-500');
+        alertBox.classList.add('bg-green-500');
+      } else {
+        alertBox.classList.remove('bg-green-500');
+        alertBox.classList.add('bg-red-500');
+      }
       alertBox.classList.remove('hidden');
       setTimeout(() => alertBox.classList.add('hidden'), 3000);
     }
 
     window.onload = async () => {
-      await liff.init({ liffId: LIFF_ID_REPORT });
-      if (!liff.isInClient() && !liff.isLoggedIn()) {
-        liff.login();
-        return;
-      }
-      const profile = await liff.getProfile();
-      userIdLine = profile.userId;
+      try {
+        // ตรวจสอบว่า LIFF_ID_REPORT มีค่าหรือไม่
+        if (!LIFF_ID_REPORT) {
+          showCustomAlert('LIFF ID ไม่ได้ถูกกำหนดใน firebase-config.js หรือในโค้ด');
+          return;
+        }
+        await liff.init({ liffId: LIFF_ID_REPORT });
 
-      // ค้นหาชื่อผู้แจ้งจาก employees
-      const empSnap = await db.ref("employees")
-        .orderByChild("userIdLine").equalTo(userIdLine).get();
-      if (empSnap.exists()) {
-        reporterName = Object.values(empSnap.val())[0].fullName;
-      } else {
-        showCustomAlert('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
-        setTimeout(() => {
-          if (liff.isInClient()) liff.closeWindow();
-        }, 2000);
-        return;
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        if (!liff.isInClient()) {
+          // หากไม่ได้เปิดใน LINE app, ให้แสดง alert และปิด
+          showCustomAlert('โปรดเปิดหน้านี้ใน LINE Application', 'error');
+          setTimeout(() => {
+            // ไม่สามารถ liff.closeWindow() ได้ถ้าไม่ได้อยู่ใน LINE
+            // อาจจะ redirect ไปหน้าอื่นแทน หรือแจ้งให้ผู้ใช้ทราบ
+          }, 3000);
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        userIdLine = profile.userId;
+
+        // ค้นหาชื่อผู้แจ้งจาก employees
+        const empSnap = await db.ref("employees")
+          .orderByChild("userIdLine").equalTo(userIdLine).get();
+        if (empSnap.exists()) {
+          reporterName = Object.values(empSnap.val())[0].fullName;
+        } else {
+          showCustomAlert('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนในระบบก่อน', 'error');
+          setTimeout(() => {
+            if (liff.isInClient()) liff.closeWindow();
+          }, 2000);
+          return;
+        }
+        document.getElementById("reporterName").textContent = reporterName;
+      } catch (e) {
+        console.error("LIFF Init Error: ", e);
+        showCustomAlert('เกิดข้อผิดพลาดในการโหลด LIFF: ' + e.message, 'error');
       }
-      document.getElementById("reporterName").textContent = reporterName;
     };
 
-    // QR scan
-    const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+    // QR scan (เหมือนเดิม)
+    const canvas = document.createElement('canvas'),
+      ctx = canvas.getContext('2d');
     document.getElementById('scanBtn').addEventListener('click', startScan);
+    let currentStream; // เก็บ stream เพื่อหยุดเมื่อสแกนเสร็จ
+
     async function startScan() {
       const video = document.getElementById('video');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      video.srcObject = stream; video.play(); video.classList.remove('hidden');
-      requestAnimationFrame(() => scanLoop(video));
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment'
+          }
+        });
+        video.srcObject = currentStream;
+        video.play();
+        video.classList.remove('hidden');
+        requestAnimationFrame(() => scanLoop(video));
+      } catch (err) {
+        console.error("Error accessing camera: ", err);
+        showCustomAlert('ไม่สามารถเข้าถึงกล้องได้: ' + err.message, 'error');
+      }
     }
+
     function scanLoop(video) {
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         const code = jsQR(
           ctx.getImageData(0, 0, canvas.width, canvas.height).data,
@@ -136,21 +194,34 @@
           const id = code.data.trim();
           db.ref(`devices/${id}`).get().then(snap => {
             if (!snap.exists()) {
-              showCustomAlert('ไม่พบอุปกรณ์นี้');
+              showCustomAlert('ไม่พบอุปกรณ์นี้ในระบบ', 'error');
+              document.getElementById('deviceId').value = '';
+              document.getElementById('deviceName').value = '';
             } else {
               document.getElementById('deviceId').value = id;
               document.getElementById('deviceName').value =
                 snap.val().deviceName || 'ไม่ทราบชื่อ';
+              showCustomAlert('สแกนอุปกรณ์สำเร็จ!', 'success');
             }
+          }).catch(err => {
+            console.error("Firebase read error:", err);
+            showCustomAlert('ข้อผิดพลาดในการอ่านข้อมูลอุปกรณ์: ' + err.message, 'error');
           });
-          video.srcObject.getTracks().forEach(t => t.stop());
+
+          // หยุดกล้อง
+          if (currentStream) {
+            currentStream.getTracks().forEach(t => t.stop());
+            video.srcObject = null;
+          }
           video.classList.add('hidden');
+          return; // ออกจาก loop
         }
       }
-      if (video.srcObject) requestAnimationFrame(() => scanLoop(video));
+      if (currentStream && video.srcObject) requestAnimationFrame(() => scanLoop(video));
     }
 
-    // Preview image
+
+    // Preview image (เหมือนเดิม)
     document.getElementById('imageInput')
       .addEventListener('change', e => {
         const file = e.target.files[0];
@@ -158,20 +229,21 @@
           const reader = new FileReader();
           reader.onload = ev => {
             const img = document.getElementById('previewImage');
-            img.src = ev.target.result; img.classList.remove('hidden');
+            img.src = ev.target.result;
+            img.classList.remove('hidden');
           };
           reader.readAsDataURL(file);
         }
       });
 
-    // Modal control
+    // Modal control (เหมือนเดิม)
     const modal = document.getElementById('confirmModal');
     document.getElementById('openConfirmBtn').addEventListener('click', () => {
       const dev = document.getElementById('deviceId').value.trim();
       const ti = document.getElementById('title').value.trim();
       const dt = document.getElementById('details').value.trim();
       if (!dev || !ti || !dt) {
-        showCustomAlert('กรุณากรอกข้อมูลให้ครบ');
+        showCustomAlert('กรุณากรอกข้อมูล รหัสอุปกรณ์ หัวข้อปัญหา และรายละเอียดให้ครบถ้วน', 'error');
         return;
       }
       modal.classList.remove('hidden');
@@ -185,7 +257,6 @@
         const btn = this;
         const originalHTML = btn.innerHTML;
         btn.disabled = true;
-        // ใส่ spinner + ข้อความ
         btn.innerHTML = `
           <svg class="animate-spin h-5 w-5 inline-block" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -194,18 +265,26 @@
           </svg>
           กำลังบันทึก...
         `;
-        await submitRepair();
-        // เปลี่ยนเป็น ✅ บันทึกสำเร็จ
-        btn.innerHTML = '✅ บันทึกสำเร็จ';
-        // รอให้ผู้ใช้เห็นข้อความสักครู่
-        setTimeout(() => {
-          if (liff.isInClient()) liff.closeWindow();
-        }, 1000);
+        try {
+          await submitRepair();
+          btn.innerHTML = '✅ บันทึกสำเร็จ';
+          showCustomAlert('ส่งแจ้งซ่อมสำเร็จ!', 'success');
+          setTimeout(() => {
+            if (liff.isInClient()) liff.closeWindow();
+          }, 1500); // เพิ่มเวลารอให้ผู้ใช้เห็นข้อความ
+        } catch (error) {
+          console.error("Submission failed:", error);
+          btn.innerHTML = originalHTML; // คืนค่าเดิม
+          btn.disabled = false;
+          showCustomAlert('เกิดข้อผิดพลาดในการส่งแจ้งซ่อม: ' + error.message, 'error');
+        } finally {
+          modal.classList.add('hidden'); // ปิด modal ไม่ว่าจะสำเร็จหรือผิดพลาด
+        }
       });
 
-    // ฟังก์ชันบันทึกลง Firebase + ส่ง LINE
+    // ฟังก์ชันบันทึกลง Firebase + ส่ง LINE ผ่าน GAS Web App
     async function submitRepair() {
-      const id = db.ref().child('repairReports').push().key;
+      const id = db.ref().child('repairReports').push().key; // สร้าง ID รายงานซ่อม
       const now = new Date().toISOString();
       const dev = document.getElementById('deviceId').value.trim();
       const devName = document.getElementById('deviceName').value.trim();
@@ -215,26 +294,66 @@
 
       let imageUrl = '';
       if (file) {
-        const snap = await storage.ref(`repair_images/${id}`).put(file);
-        imageUrl = await snap.ref.getDownloadURL();
+        try {
+          const snap = await storage.ref(`repair_images/${id}`).put(file);
+          imageUrl = await snap.ref.getDownloadURL();
+        } catch (err) {
+          console.error("Image upload failed:", err);
+          showCustomAlert('ไม่สามารถอัปโหลดรูปภาพได้: ' + err.message, 'error');
+          // ไม่ต้อง throw error ออกไปเพื่อให้รายการซ่อมยังคงถูกบันทึกโดยไม่มีรูปภาพ
+        }
       }
 
+      // บันทึกลง Firebase Realtime Database
       await db.ref(`repairReports/${id}`).set({
-        id, date: now,
+        id,
+        date: now,
         timestamp: firebase.database.ServerValue.TIMESTAMP,
-        reporterName, userIdLine,
-        deviceId: dev, deviceName: devName,
-        title: ti, details: dt,
-        status: 'รอซ่อม', imageUrl
+        reporterName,
+        userIdLine,
+        deviceId: dev,
+        deviceName: devName,
+        title: ti,
+        details: dt,
+        status: 'รอซ่อม',
+        imageUrl
       });
+
+      // อัปเดตสถานะอุปกรณ์ใน Firebase Realtime Database
       await db.ref(`devices/${dev}`).update({
         status: 'ส่งซ่อม',
         lastUser: reporterName,
-        lastUserId: userIdLine
+        lastUserId: userIdLine,
+        lastRepairReportId: id // เพิ่ม field นี้เพื่อลิงก์ไปยังรายงานซ่อม
       });
 
-      const msg = `แจ้งรายการซ่อม\nรหัส อุปกรณ์: ${dev}\nหัวข้อ: ${ti}\nรายละเอียด: ${dt}`;
-      await liff.sendMessages([{ type: 'text', text: msg }]);
+      // 🚨 จุดสำคัญ: ส่งข้อมูลไปยัง GAS Web App เพื่อให้ App Script ส่ง Flex Message
+      const payload = {
+        action: 'repair', // ระบุ action เป็น 'repair'
+        deviceId: dev,
+        deviceName: devName,
+        title: ti,
+        details: dt,
+        reporterName: reporterName,
+        userIdLine: userIdLine,
+        imageUrl: imageUrl // ส่ง URL รูปภาพไปด้วย
+      };
+
+      const response = await fetch(GAS_WEB_APP_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+      if (response.ok && responseData.status === 'success') {
+        console.log('Flex message sent successfully via GAS:', responseData);
+      } else {
+        console.error('Failed to send Flex message via GAS:', responseData);
+        throw new Error(responseData.message || 'Unknown error from GAS');
+      }
     }
   </script>
 </body>

@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="th">
 
@@ -125,6 +124,68 @@
       return ids;
     }
 
+    // สร้าง Flex Message สำหรับผู้แจ้ง
+    function buildUserRepairFlex(user, dev, devName, title, details) {
+      return {
+        type: "bubble",
+        header: {
+          type: "box", layout: "vertical", backgroundColor: "#1976D2", paddingAll: "md",
+          contents: [{
+            type: "text",
+            text: "⚙️ แจ้งซ่อมอุปกรณ์",
+            weight: "bold",
+            size: "xl",
+            color: "#FFFFFF",
+            align: "center"
+          }]
+        },
+        body: {
+          type: "box", layout: "vertical", spacing: "md", paddingAll: "lg",
+          contents: [
+            {
+              type: "text",
+              text: `ผู้แจ้ง: ${user}`,
+              size: "sm",
+              wrap: true
+            },
+            {
+              type: "text",
+              text: `รหัส: ${dev}`,
+              size: "sm",
+              wrap: true
+            },
+            {
+              type: "text",
+              text: `ชื่อ: ${devName}`,
+              size: "sm",
+              wrap: true
+            },
+            {
+              type: "text",
+              text: `หัวข้อ: ${title}`,
+              size: "sm",
+              wrap: true
+            },
+            {
+              type: "text",
+              text: `รายละเอียด: ${details}`,
+              size: "sm",
+              wrap: true
+            }
+          ]
+        },
+        footer: {
+          type: "box", layout: "vertical", spacing: "sm",
+          contents: [{
+            type: "button",
+            action: { type: "uri", label: "ดูรายละเอียด", uri: LIFF_WEB_URL },
+            style: "primary",
+            color: "#1976D2"
+          }]
+        }
+      };
+    }
+
     // ฟังก์ชันแจ้งเตือน admin ผ่าน GAS
     async function notifyAdminsRepair(dev, title, details) {
       const admins = await getAdminIds();
@@ -148,7 +209,6 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        console.log('Sent repair notification to admins');
       } catch (e) {
         console.error('Error notifying admins:', e);
       }
@@ -210,7 +270,7 @@
 
     // Confirm & submit
     document.getElementById('confirmBtn').addEventListener('click', async function() {
-      const btn = this, orig = btn.innerHTML;
+      const btn = this;
       btn.disabled = true;
       btn.innerHTML = `
         <svg class="animate-spin h-5 w-5 inline-block" viewBox="0 0 24 24">
@@ -254,14 +314,18 @@
         lastUserId: userIdLine
       });
 
-      const msg = `แจ้งซ่อมอุปกรณ์\nรหัส: ${dev}\nหัวข้อ: ${ti}\nรายละเอียด: ${dt}`;
-      await liff.sendMessages([{ type: 'text', text: msg }]);
+      // ส่ง Flex Message ให้ผู้แจ้ง
+      const flexContent = buildUserRepairFlex(reporterName, dev, devName, ti, dt);
+      await liff.sendMessages([{
+        type: 'flex',
+        altText: '⚙️ แจ้งซ่อมอุปกรณ์',
+        contents: flexContent
+      }]);
 
-      // notify admins
+      // แจ้งเตือน Admin
       await notifyAdminsRepair(dev, ti, dt);
     }
   </script>
 </body>
 
 </html>
-```

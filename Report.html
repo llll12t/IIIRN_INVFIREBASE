@@ -111,6 +111,19 @@
         setTimeout(() => liff.isInClient() && liff.closeWindow(), 2000);
       }
       document.getElementById("reporterName").textContent = reporterName;
+
+      // กรอก/เปลี่ยนรหัสอุปกรณ์ จะดึงชื่อมาแสดง
+      document.getElementById('deviceId').addEventListener('blur', async () => {
+        const code = document.getElementById('deviceId').value.trim();
+        if (!code) return;
+        const snap = await db.ref(`devices/${code}`).get();
+        if (snap.exists()) {
+          document.getElementById('deviceName').value = snap.val().deviceName || '';
+        } else {
+          document.getElementById('deviceName').value = '';
+          showCustomAlert('ไม่พบอุปกรณ์นี้');
+        }
+      });
     };
 
     // ดึง admin IDs

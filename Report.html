@@ -228,15 +228,18 @@
     // Preview image
     document.getElementById('imageInput').addEventListener('change', e => {
       const file = e.target.files[0];
+      let imageUrl = '';
       if (file) {
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const img = document.getElementById('previewImage');
-          img.src = ev.target.result; img.classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
+        try {
+          const snap = await storage.ref(`repair_images/${id}`).put(file);
+          imageUrl = await snap.ref.getDownloadURL();
+        } catch (err) {
+          console.error('Upload error:', err);
+          showCustomAlert('❌ ไม่สามารถอัปโหลดรูปภาพ กรุณาลองใหม่');
+          // อาจเลือก return เพื่อไม่เขียนข้อมูลลง DB ต่อ
+          return;
+        }
       }
-    });
 
     // Modal control
     const modal = document.getElementById('confirmModal');
